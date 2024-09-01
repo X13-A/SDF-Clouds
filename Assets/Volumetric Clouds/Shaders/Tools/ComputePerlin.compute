@@ -1,0 +1,102 @@
+#pragma kernel CSMain
+
+// The 3D texture that we will write to
+RWTexture3D<float> Result;
+int3 ResultRes;
+
+// Noise uniforms
+float3 Scale;
+float3 Offset;
+int Seed;
+int Levels;
+float Attenuation;
+
+// Hash function with seed
+uint hash(uint x, uint seed)
+{
+    x = x ^ seed;
+    x += (x << 10u);
+    x ^= (x >> 6u);
+    x += (x << 3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+
+// Linear interpolation
+float lerp(float a, float b, float t)
+{
+    return a + t * (b - a);
+}
+
+// Compute the dot product of the distance and gradient vectors
+float grad(int hash, float x, float y)
+{
+    int h = hash & 15;
+    float u = h < 8 ? x : y;
+    float v = h < 4 ? y : h == 12 || h == 14 ? x : 0.0;
+    return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
+}
+
+// 2D Perlin noise function with seed
+float perlinNoise(float x, float y, uint seed)
+{
+    int ix = (int) floor(x) & 255;
+    int iy = (int) floor(y) & 255;
+    x -= floor(x);
+    y -= floor(y);
+    float u = x * x * x * (x * (x * 6 - 15) + 10);
+    float v = y * y * y * (y * (y * 6 - 15) + 10);
+    int a = hash(ix, seed) + iy;
+    int b = hash(ix + 1, seed) + iy;
+    float r = lerp(lerp(grad(hash(a, seed), x, y), grad(hash(b, seed), x - 1, y), u),
+                   lerp(grad(hash(a + 1, seed), x, y - 1), grad(hash(b + 1, seed), x - 1, y - 1), u), v);
+    return (r + 1.0) / 2.0;
+}
+
+// Function to compute 3D noise
+// Warning: Attenuation & Levels are untested
+// Function to compute 3D fractal noise
+float getFractalNoise(float x, float y, float z, float3 scale, float3 offset, uint seed, int levels, float attenuation)
+{
+    float noise = 0.0;
+    float amplitude = 1.0;
+    float frequency = 1.0;
+    float totalAmplitude = 0.0;
+
+    for (int i = 0; i < levels; ++i)
+    {
+        // Modify the seed for each level to ensure variation
+
+        float ab = perlinNoise(offset.x + x * scale.x * frequency, offset.y + y * scale.y * frequency, seed);
+        float bc = perlinNoise(offset.y + y * scale.y * frequency, offset.z + z * scale.z * frequency, seed);
+        float ac = perlinNoise(offset.x + x * scale.x * frequency, offset.z + z * scale.z * frequency, seed);
+
+        float ba = perlinNoise(offset.y + y * scale.y * frequency, offset.x + x * scale.x * frequency, seed);
+        float cb = perlinNoise(offset.z + z * scale.z * frequency, offset.y + y * scale.y * frequency, seed);
+        float ca = perlinNoise(offset.z + z * scale.z * frequency, offset.x + x * scale.x * frequency, seed);
+
+        float levelNoise = (ab + bc + ac + ba + cb + ca) / 6.0f;
+
+        noise += levelNoise * amplitude;
+        totalAmplitude += amplitude;
+
+        amplitude *= attenuation;
+        frequency *= 2.0;
+    }
+
+    // Normalize the noise value
+    return noise / totalAmplitude - 0.3f;
+}
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Compute the normalized position within the texture
+    float3 normalizedPos = id / float3(ResultRes);
+
+    // Compute fractal noise
+    float noise = getFractalNoise(normalizedPos.x, normalizedPos.y, normalizedPos.z, Scale, Offset, Seed, Levels, Attenuation);
+    // Write the result to the 3D texture
+        Result[id] = noise;
+}

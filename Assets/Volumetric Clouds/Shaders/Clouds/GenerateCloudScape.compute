@@ -1,0 +1,24 @@
+#pragma kernel CSMain
+
+RWTexture3D<float> _OutputTexture;
+Texture3D<float> _InputTexture;
+int3 _TextureSize;
+float _Threshold;
+
+float shapeNoise(float noise, int3 pos)
+{
+    return saturate(noise - _Threshold);
+}
+
+[numthreads(8,8,8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Get the position of the current voxel
+    int3 pos = int3(id);
+
+    // Calculate the noise
+    float noise = _InputTexture[pos];
+    noise = shapeNoise(noise, pos);
+     
+    _OutputTexture[pos] = noise;
+}

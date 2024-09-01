@@ -1,0 +1,50 @@
+#pragma kernel Downscale
+
+// Input 3D texture
+Texture3D<float> _InputTexture;
+
+// Output 3D texture
+RWTexture3D<float> _OutputTexture;
+
+// Input texture size
+int3 _InputSize;
+
+// Output texture size
+int3 _OutputSize;
+
+// Calculate the average value of the neighboring voxels
+float SampleNeighboringVoxels(int3 pos)
+{
+    float total = 0.0f;
+    int count = 0;
+
+    for (int z = -1; z <= 1; z++)
+    {
+        for (int y = -1; y <= 1; y++)
+        {
+            for (int x = -1; x <= 1; x++)
+            {
+                int3 neighborPos = pos + int3(x, y, z);
+                if (all(neighborPos >= 0) && all(neighborPos < _InputSize))
+                {
+                    total += _InputTexture[neighborPos];
+                    count++;
+                }
+            }
+        }
+    }
+    return total / count;
+}
+
+[numthreads(8, 8, 8)]
+void Downscale(uint3 id : SV_DispatchThreadID)
+{
+    int3 outPos = int3(id);
+    if (all(outPos < _OutputSize))
+    {
+        float3 ratio = float3(_InputSize) / float3(_OutputSize);
+        int3 inPos = int3(float3(outPos) * ratio);
+
+        _OutputTexture[outPos] = SampleNeighboringVoxels(inPos);
+    }
+}
