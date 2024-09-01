@@ -105,13 +105,27 @@ float2 rayBoxDst(float3 rayOrigin, float3 rayDir, float3 boundsMin, float3 bound
     return float2(dstToBox, dstInsideBox);
 }
 
-// Rather or not the point is inside the container
-bool isInBox(float3 pos, float3 boundsMin, float3 boundsMax)
+// Rather or not the point is inside the container, based on the bounds
+bool isInBox_bounds(float3 pos, float3 boundsMin, float3 boundsMax)
 {
     bool x = pos.x > boundsMin.x && pos.x < boundsMax.x;
     bool y = pos.y > boundsMin.y && pos.y < boundsMax.y;
     bool z = pos.z > boundsMin.z && pos.z < boundsMax.z;
     return x && y && z;
+}
+
+// Rather or not the point is inside the container, based on the origin and size
+bool isInBox_size(float3 pos, float3 boxOrigin, float3 boxSize)
+{
+    if (pos.x >= boxOrigin.x + boxSize.x / 2) return false;
+    if (pos.x < boxOrigin.x - boxSize.x / 2) return false;
+                
+    if (pos.y >= boxOrigin.y + boxSize.y / 2) return false;
+    if (pos.y < boxOrigin.y - boxSize.y / 2) return false;
+                
+    if (pos.z >= boxOrigin.z + boxSize.z / 2) return false;
+    if (pos.z < boxOrigin.z - boxSize.z / 2) return false;
+    return true;
 }
 
 float sampleErosion(float3 pos, s_erosionParams erosionParams, float time, float density)
@@ -290,5 +304,34 @@ s_lightMarchResult lightMarch_sdf(float3 samplePos, s_rayMarchParams rayParams, 
 //    res.complexity = steps;
 //    return res;
 //}
+
+
+#if defined(SHADER_STAGE_FRAGMENT)
+float sampleTransmittanceMap(float3 pos, float3 mapOrigin, float3 mapCoverage, sampler3D map)
+{
+    float3 uvw = (pos - mapOrigin) / mapCoverage + float3(0.5, 0.5, 0.5);
+    return tex3D(map, uvw).r;
+}
+
+float getCloudShadowing(float3 pos, float3 lightDir, float3 containerBoundsMin, float3 containerBoundsMax, sampler3D transmittanceMap, float3 transmittanceMapOrigin, float3 transmittanceMapCoverage)
+{
+    // Shoot ray towards light
+    float2 rayBoxInfo = rayBoxDst(pos, -lightDir, containerBoundsMin, containerBoundsMax);
+    float dstToBox = rayBoxInfo.x;
+    float dstInsideBox = rayBoxInfo.y;
+
+    if (dstInsideBox <= 0) return 0;
+    
+    // Project ray onto the transmittanceMap, if underneath
+    float3 samplePos = pos + (dstToBox + 0.1) * (-lightDir);
+
+    // Check if inside the map
+    if (!isInBox_size(samplePos, transmittanceMapOrigin, transmittanceMapCoverage)) return 0;
+    
+    // Sample the map and get the shadowing
+    float transmittance = sampleTransmittanceMap(samplePos, transmittanceMapOrigin, transmittanceMapCoverage, transmittanceMap);
+    return 1 - saturate(transmittance);
+}
+#endif
 
 #endif // CLOUDS_LIB_INCLUDED

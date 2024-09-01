@@ -72,9 +72,9 @@ int3 posToMapID(float3 currentPos)
 
 bool isInMap(int3 mapID)
 {
-    if (mapID.x < 0 || mapID.x >= _TransmittanceMapResolution.x) return false;
-    if (mapID.y < 0 || mapID.y >= _TransmittanceMapResolution.y) return false;
-    if (mapID.z < 0 || mapID.z >= _TransmittanceMapResolution.z) return false;
+    if (mapID.x < 0 || (uint) mapID.x >= _TransmittanceMapResolution.x) return false;
+    if (mapID.y < 0 || (uint) mapID.y >= _TransmittanceMapResolution.y) return false;
+    if (mapID.z < 0 || (uint) mapID.z >= _TransmittanceMapResolution.z) return false;
     return true;
 }
 

@@ -1,4 +1,4 @@
-Shader"Custom/CloudsPostProcess_V3"
+Shader"Custom/Volumetrics/Clouds"
 {
     Properties
     {
@@ -133,25 +133,6 @@ Shader"Custom/CloudsPostProcess_V3"
                 return phaseMie;
             }
 
-            bool isInTransmittanceMap(float3 pos)
-            {
-                if (pos.x >= _TransmittanceMapOrigin.x + _TransmittanceMapCoverage.x / 2) return false;
-                if (pos.x < _TransmittanceMapOrigin.x - _TransmittanceMapCoverage.x / 2) return false;
-                
-                if (pos.y >= _TransmittanceMapOrigin.y + _TransmittanceMapCoverage.y / 2) return false;
-                if (pos.y < _TransmittanceMapOrigin.y - _TransmittanceMapCoverage.y / 2) return false;
-                
-                if (pos.z >= _TransmittanceMapOrigin.z + _TransmittanceMapCoverage.z / 2) return false;
-                if (pos.z < _TransmittanceMapOrigin.z - _TransmittanceMapCoverage.z / 2) return false;
-                return true;
-            }
-
-            float sampleTransmittanceMap(float3 pos)
-            {
-                float3 uvw = (pos - _TransmittanceMapOrigin) / _TransmittanceMapCoverage + float3(0.5, 0.5, 0.5);
-                return tex3D(_TransmittanceMap, uvw).r;
-            }
-
             struct cloudMarchResult
             {
                 float transmittance;
@@ -164,7 +145,7 @@ Shader"Custom/CloudsPostProcess_V3"
                 float dstTravelled = dstToBox + offset;
                 float3 currentPos = rayPos + rayDir * dstTravelled;
                 float sdfValue = 0.1;
- 	            float phaseVal = phaseHG(rayDir, lightParams.lightDir);
+ 	            float phaseVal = phaseHG(rayDir, -lightParams.lightDir);
 
                 int steps = 0;
                 float accumulatedDensity = 0.0;
@@ -223,9 +204,9 @@ Shader"Custom/CloudsPostProcess_V3"
                         accumulatedDensity += density;
 
                         float lightTransmittance;
-                        if (isInTransmittanceMap(currentPos))
+                        if (isInBox_size(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage))
                         {
-                            lightTransmittance = sampleTransmittanceMap(currentPos);
+                            lightTransmittance = sampleTransmittanceMap(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage, _TransmittanceMap);
                         }
                         else
                         {
@@ -253,7 +234,7 @@ Shader"Custom/CloudsPostProcess_V3"
                 float3 rayPos = _WorldSpaceCameraPos;
                 float viewLength = length(i.viewVector);
                 float3 rayDir = i.viewVector.xyz / viewLength;
-                float3 lightDir = normalize(_WorldSpaceLightPos0);
+                float3 lightDir = normalize(-_WorldSpaceLightPos0);
 
                 // Compute depth
                 float depthDist = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_CameraDepthTexture, i.uv);
@@ -267,10 +248,15 @@ Shader"Custom/CloudsPostProcess_V3"
                 float dstToBox = rayBoxInfo.x;
                 float dstInsideBox = rayBoxInfo.y;
 
+                // Compute shadows
+                float3 worldPos = rayPos + rayDir * depthDist;
+                float shadowing = 1 - getCloudShadowing(worldPos, lightDir, _BoundsMin, _BoundsMax, _TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage);
+
                 // Early exit when the container is not occluded
                 if (dstInsideBox == 0 || depthDist < dstToBox)
                 {
-                    return backgroundColor;
+                    return backgroundColor * shadowing;
+                    return half4(lightDir, 1);
                 }
 
                 // Initialize structures
@@ -307,7 +293,7 @@ Shader"Custom/CloudsPostProcess_V3"
                 
                 float4 cloudColor = float4(_LightColor0.rgb, 0);
                 cloudColor = cloudColor * res.lightEnergy;
-                return float4(backgroundColor.rgb * res.transmittance + cloudColor.rgb, 1);
+                return float4(backgroundColor.rgb * res.transmittance * shadowing + cloudColor.rgb, 1);
             }
 
             ENDCG 

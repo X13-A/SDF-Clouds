@@ -31,6 +31,7 @@ public class TransmittanceMap : MonoBehaviour
     public int TextureHeight => textureHeight;
     public int TextureDepth => textureDepth;
     private int mapKernel;
+    [SerializeField] private bool useErosion = false;
 
     [SerializeField] private CloudsPostProcess_V3 clouds;
 
@@ -106,6 +107,7 @@ public class TransmittanceMap : MonoBehaviour
         mapCompute.SetFloat("_ErosionWorldScale", clouds.erosionWorldScale);
         mapCompute.SetFloats("_ErosionSpeed", new float[] { clouds.erosionSpeed.x, clouds.erosionSpeed.y, clouds.erosionSpeed.z });
         mapCompute.SetFloat("_ErosionIntensity", clouds.erosionIntensity);
+        mapCompute.SetBool("_UseErosion", useErosion);
 
         // Others
         mapCompute.SetTexture(mapKernel, "_OffsetNoise", offsetNoise);
