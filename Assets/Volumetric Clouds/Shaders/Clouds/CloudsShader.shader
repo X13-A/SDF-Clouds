@@ -64,9 +64,13 @@ Shader"Custom/Volumetrics/Clouds"
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_CameraDepthTexture); // Unity depth
 
             // Shape
-            float3 _BoundsMin;
-            float3 _BoundsMax;
+            float3 _CloudsBoundsMin;
+            float3 _CloudsBoundsMax;
             float3 _CloudsScale;
+
+            float3 _FogBoundsMin;
+            float3 _FogBoundsMax;
+
             float _GlobalDensity;
 
             sampler3D _ShapeSDF;
@@ -83,6 +87,7 @@ Shader"Custom/Volumetrics/Clouds"
             fixed4 _LightColor0;
             float2 _PhaseParams;
             float _SunLightAbsorption;
+            float _ShadowsIntensity;
 
             float _PowderBrightness;
             float _PowderIntensity;
@@ -98,8 +103,15 @@ Shader"Custom/Volumetrics/Clouds"
             sampler2D _OffsetNoise;
             float _OffsetNoiseIntensity;
             float _CloudMinStepSize;
+            float _CloudMaxSteps;
             float _LightMinStepSize;
             float _ThresholdSDF;
+            float _RenderDistance;
+
+            // Fog
+            float _FogDensity;
+            float _FogDistance;
+            float _FogStepSize;
 
             // Others
             float _CustomTime;
@@ -132,14 +144,7 @@ Shader"Custom/Volumetrics/Clouds"
                                 pow(1.0 + mieG*mieG - 2.0*mieG*cosTheta, 1.5);
                 return phaseMie;
             }
-
-            struct cloudMarchResult
-            {
-                float transmittance;
-                float lightEnergy;
-                int complexity;
-            };
-      
+                  
             cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightParams, s_rayMarchParams rayParams, s_cloudParams cloudParams, s_erosionParams erosionParams, float dstToBox, float dstInsideBox, float depthDist = 1e10, float offset = 0)
             {
                 float dstTravelled = dstToBox + offset;
@@ -148,7 +153,6 @@ Shader"Custom/Volumetrics/Clouds"
  	            float phaseVal = phaseHG(rayDir, -lightParams.lightDir);
 
                 int steps = 0;
-                float accumulatedDensity = 0.0;
                 float lightEnergy = 0.0;
 
                 bool insideCloud = false;
@@ -163,15 +167,22 @@ Shader"Custom/Volumetrics/Clouds"
                 float density;
                 float lightTransmittance;
 
+                //if(dstToBox > 0 && dstInsideBox > 0)
+                //{
+                //    cloudMarchResult fogRes = getFog(rayPos, rayDir, min(dstToBox, depthDist), lightParams.lightDir, res.transmittance, res.lightEnergy, offset);
+                //    res.transmittance = fogRes.transmittance;
+                //    res.lightEnergy = fogRes.lightEnergy;
+                //}
+
                 [loop]
                 while (dstTravelled - dstToBox < dstInsideBox && dstTravelled < depthDist && steps < hardLoopLimit)
                 {
-                    if (res.transmittance < 0.05)
+                    if (res.transmittance < 0.01)
                     {
                         break;
                     }
 
-                    sdfValue = sampleSDF(currentPos, rayParams, cloudParams);
+                    sdfValue = sampleSDF(currentPos, rayParams, cloudParams, _CustomTime);
                     if (sdfValue <= rayParams.sdfThreshold) // Inside the cloud
                     {
                         if (!insideCloud)
@@ -187,6 +198,10 @@ Shader"Custom/Volumetrics/Clouds"
                         }
                     }
 
+                    // HACK : Makes better erosion
+                    // TODO : Find more optimized way
+                    insideCloud = true;
+
                     // SDF-based step size with a minimum
                     stepSize = sdfValue; 
                     
@@ -198,29 +213,158 @@ Shader"Custom/Volumetrics/Clouds"
                     stepSize = max(stepSize, _CloudMinStepSize);
                     stepSize = min(stepSize, dstInsideBox - (dstTravelled - dstToBox));
 
+                    // Sample transmittance at current pos
+                    float lightTransmittance;
+                    if (isInBox_size(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage))
+                    {
+                        lightTransmittance = sampleTransmittanceMap(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage, _TransmittanceMap);
+                    }
+                    else
+                    {
+                        lightTransmittance = 1;
+                    }
+
+                    // Add density when inside cloud
                     if (insideCloud)
                     {
                         density = sampleDensity(currentPos, cloudParams, erosionParams, rayParams, _CustomTime) * stepSize;
-                        accumulatedDensity += density;
-
-                        float lightTransmittance;
-                        if (isInBox_size(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage))
-                        {
-                            lightTransmittance = sampleTransmittanceMap(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage, _TransmittanceMap);
-                        }
-                        else
-                        {
-                            lightTransmittance = 0;
-                        }
-
                         res.lightEnergy += density * res.transmittance * lightTransmittance;
                         res.transmittance *= beer(density);
                     }
+
+                    // Add fog, more optimized to do it here rather than in the specialized function
+                    float fogDensity = stepSize * pow(dstTravelled, 2);
+                    fogDensity *= pow(_FogDensity / 100000, 2);
+                    
+                    res.lightEnergy += fogDensity * res.transmittance * lightTransmittance;
+                    res.transmittance *= beer(fogDensity);
 
                     dstTravelled += stepSize;
                     currentPos += rayDir * stepSize;
                     steps++;
                 }
+
+                //// Apply fog when coming out of the container as well
+                //if(dstTravelled < depthDist)
+                //{
+                //    float3 outPos = rayPos;
+                //    float remainingDepth = depthDist;
+                    
+                //    if (dstInsideBox > 0)
+                //    {
+                //        outPos = depthDist - (dstToBox + dstInsideBox);
+                //        remainingDepth = rayPos * (dstToBox + dstInsideBox);
+                //    }
+
+                //    cloudMarchResult fogRes = getFog(outPos, rayDir, remainingDepth, lightParams.lightDir, res.transmittance, res.lightEnergy, -offset);
+                //    res.transmittance = fogRes.transmittance;
+                //    res.lightEnergy = fogRes.lightEnergy;
+                //}
+
+                res.complexity = steps;
+                res.lightEnergy *= phaseVal;
+                return res;
+            }
+
+            cloudMarchResult cloudMarch_v2(float3 rayPos, float3 rayDir, s_lightParams lightParams, s_rayMarchParams rayParams, s_cloudParams cloudParams, s_erosionParams erosionParams, rayBoxInfo cloudsBoxInfo, rayBoxInfo fogBoxInfo, float depthDist = 1e10, float offset = 0)
+            {
+                // Assume fog box is bigger than cloud box
+                float dstTravelled = fogBoxInfo.dstToBox + offset;
+
+                // TODO: Skip steps before fog start
+                //if (_FogDistance < cloudsBoxInfo.dstToBox - dstTravelled) dstTravelled += _FogDistance;
+                //else if (cloudsBoxInfo.dstInsideBox <= 0 && fogBoxInfo.dstInsideBox < _FogDistance) dstTravelled += _FogDistance;
+                
+                cloudMarchResult res;
+                res.transmittance = 1;
+                res.lightEnergy = 0;
+
+                //if (dstInsideBox <= 0 || _FogDistance < dstToBox) dstTravelled += _FogDistance;
+                //if (dstInsideBox <= 0 && depthDist >= 1e10)
+                float3 currentPos = rayPos + rayDir * dstTravelled;
+
+                float sdfValue = 0.1;
+ 	            float phaseVal = phaseHG(normalize(rayDir), normalize(-lightParams.lightDir)); // TODO: fix phaseHG
+
+                int steps = 0;
+                float lightEnergy = 0.0;
+
+                bool insideCloud = false;
+                float stepSize = _CloudMinStepSize;
+
+                float density = 0;
+                float lightTransmittance;
+
+                // Problem: Algorithm always does maximum steps
+                // Optimization 1:(OK) define a fog bounding box and use it to start / stop ray marching
+                // Optimization 2: skip useless steps until fog appears
+                // Optimization 3: increase step size with distance ?
+                [loop]
+                while (dstTravelled < depthDist && dstTravelled < _RenderDistance && dstTravelled < (fogBoxInfo.dstToBox + fogBoxInfo.dstInsideBox) && steps < _CloudMaxSteps && res.transmittance >= 0.01)
+                {
+                    bool is_inside_clouds_box = isInBox_bounds(currentPos, _CloudsBoundsMin, _CloudsBoundsMax);
+                    density = 0;
+
+                    // Add fog
+                    float fogDensity = sampleFog(currentPos, _CloudsBoundsMin.y, _CloudsBoundsMax.y - _CloudsBoundsMin.y / 2);
+                    fogDensity *= stepSize * pow(max(dstTravelled - _FogDistance, 0), 2);
+                    fogDensity *= pow(_FogDensity / 100000, 2);
+                    density += fogDensity;
+
+                    // Sample transmittance at current pos
+                    float lightTransmittance;
+                    if (isInBox_size(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage))
+                    {
+                        lightTransmittance = sampleTransmittanceMap(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage, _TransmittanceMap);
+                    }
+                    else
+                    {
+                        // Project point on box and check value
+                        lightTransmittance = getCloudShadowing(currentPos, lightParams.lightDir, _CloudsBoundsMin, _CloudsBoundsMax, _TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage);
+                    }
+
+                    // Use SDF and sample clouds when inside volume
+                    if (is_inside_clouds_box)
+                    {
+                        sdfValue = sampleSDF(currentPos, rayParams, cloudParams, _CustomTime);
+
+                        // Check if inside cloud (or near erosion)
+                        insideCloud = sdfValue <= rayParams.sdfThreshold + _ErosionWorldScale;
+
+                        // SDF-based step size with a minimum
+                        stepSize = sdfValue; 
+
+                        // Negative sdf value means we are inside the volume
+                        stepSize = max(abs(stepSize), _CloudMinStepSize);
+
+                        // Add density when inside cloud
+                        if (insideCloud)
+                        {
+                            // Only erode edges to improve performance
+                            erosionParams.erode = erosionParams.erode && abs(sdfValue) <= _ErosionWorldScale * 2;
+                            density += sampleDensity(currentPos, cloudParams, erosionParams, rayParams, _CustomTime) * stepSize;
+                        }
+                    }
+                    else
+                    {
+                        // Set fixed step size outside SDF
+                        stepSize = _FogStepSize;
+
+                        // Clamp stepsize when entering box
+                        float dstRemaining = max(cloudsBoxInfo.dstToBox - dstTravelled, 0);
+                        if (cloudsBoxInfo.dstInsideBox > 0 && stepSize > dstRemaining) stepSize = min(dstRemaining + offset, _CloudMinStepSize);
+                    }
+                    
+                    // Apply light and density
+                    res.lightEnergy += density * res.transmittance * lightTransmittance;
+                    res.transmittance *= beer(density);
+        
+                    // Advance ray
+                    dstTravelled += stepSize;
+                    currentPos += rayDir * stepSize;
+                    steps++;
+                }
+
                 res.complexity = steps;
                 res.lightEnergy *= phaseVal;
                 return res;
@@ -243,20 +387,20 @@ Shader"Custom/Volumetrics/Clouds"
                 // Sample background
                 float4 backgroundColor = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex, i.uv);
 
-                // Calculate dist inside box
-                float2 rayBoxInfo = rayBoxDst(rayPos, rayDir, _BoundsMin, _BoundsMax);
-                float dstToBox = rayBoxInfo.x;
-                float dstInsideBox = rayBoxInfo.y;
+                // Calculate dist inside boxes
+                rayBoxInfo cloudsBoxInfo = rayBoxDst(rayPos, rayDir, _CloudsBoundsMin, _CloudsBoundsMax);
+                rayBoxInfo fogBoxInfo = rayBoxDst(rayPos, rayDir, _FogBoundsMin, _FogBoundsMax);
 
                 // Compute shadows
                 float3 worldPos = rayPos + rayDir * depthDist;
-                float shadowing = 1 - getCloudShadowing(worldPos, lightDir, _BoundsMin, _BoundsMax, _TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage);
+                float shadowing = getCloudShadowing(worldPos, lightDir, _CloudsBoundsMin, _CloudsBoundsMax, _TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage);
+                shadowing = clamp(shadowing, 0, 0.25);
+                shadowing /= 100 - clamp(_ShadowsIntensity, 0, 100);
 
-                // Early exit when the container is not occluded
-                if (dstInsideBox == 0 || depthDist < dstToBox)
+                // Early exit when the container is not visible
+                if (fogBoxInfo.dstInsideBox == 0 || depthDist < fogBoxInfo.dstToBox)
                 {
-                    return backgroundColor * shadowing;
-                    return half4(lightDir, 1);
+                    return backgroundColor;
                 }
 
                 // Initialize structures
@@ -275,8 +419,8 @@ Shader"Custom/Volumetrics/Clouds"
                 rayParams.offset = length(tex2D(_OffsetNoise, i.uv).rgb) / 3.0 * _OffsetNoiseIntensity;
 
                 s_cloudParams cloudParams;
-                cloudParams.boundsMin = _BoundsMin;
-                cloudParams.boundsMax = _BoundsMax;
+                cloudParams.boundsMin = _CloudsBoundsMin;
+                cloudParams.boundsMax = _CloudsBoundsMax;
                 cloudParams.cloudsScale = _CloudsScale;
                 cloudParams.globalDensity = _GlobalDensity;
 
@@ -289,11 +433,14 @@ Shader"Custom/Volumetrics/Clouds"
                 erosionParams.erode = true; // Assuming erosion is always enabled;
 
                 // Perform cloud marching
-                cloudMarchResult res = cloudMarch(rayPos, rayDir, lightParams, rayParams, cloudParams, erosionParams, dstToBox, dstInsideBox, depthDist, rayParams.offset);
+                cloudMarchResult res = cloudMarch_v2(rayPos, rayDir, lightParams, rayParams, cloudParams, erosionParams, cloudsBoxInfo, fogBoxInfo, depthDist, rayParams.offset);
                 
                 float4 cloudColor = float4(_LightColor0.rgb, 0);
+                fixed4 shadowColor = fixed4(0, 0.025, 0.2, 0.025);
+                //shadowColor *= 0;
+                //cloudColor = lerp(cloudColor, shadowColor, 1 - res.lightEnergy);
                 cloudColor = cloudColor * res.lightEnergy;
-                return float4(backgroundColor.rgb * res.transmittance * shadowing + cloudColor.rgb, 1);
+                return float4(backgroundColor.rgb * res.transmittance - shadowing + cloudColor.rgb * (1 - res.transmittance), 1);
             }
 
             ENDCG 

@@ -54,6 +54,13 @@ struct s_cloudParams
     float3 cloudsScale;
 };
 
+struct cloudMarchResult
+{
+    float transmittance;
+    float lightEnergy;
+    int complexity;
+};
+
 // Remaps a value to the [0, 1] range
 float remap01(float v, float min, float max)
 {
@@ -85,8 +92,14 @@ float beerPowder(float d, s_lightParams lightParams)
     return (beerVal * powderVal);
 }
 
+struct rayBoxInfo
+{
+    float dstToBox;
+    float dstInsideBox;
+};
+
 // Computes distance to box and distance inside the box
-float2 rayBoxDst(float3 rayOrigin, float3 rayDir, float3 boundsMin, float3 boundsMax)
+rayBoxInfo rayBoxDst(float3 rayOrigin, float3 rayDir, float3 boundsMin, float3 boundsMax)
 {
     float3 invRayDir = 1 / rayDir;
 
@@ -100,17 +113,22 @@ float2 rayBoxDst(float3 rayOrigin, float3 rayDir, float3 boundsMin, float3 bound
     float dstA = max(max(tmin.x, tmin.y), tmin.z); // A is the closest point
     float dstB = min(tmax.x, min(tmax.y, tmax.z)); // B is the furthest point
 
-    float dstToBox = max(0, dstA);
-    float dstInsideBox = max(0, dstB - dstToBox);
-    return float2(dstToBox, dstInsideBox);
+    rayBoxInfo res;
+    res.dstToBox = max(0, dstA);
+    res.dstInsideBox = max(0, dstB - res.dstToBox);
+    return res;
 }
 
 // Rather or not the point is inside the container, based on the bounds
-bool isInBox_bounds(float3 pos, float3 boundsMin, float3 boundsMax)
+bool isInBox_bounds(float3 pos, float3 boundsMin, float3 boundsMax, bool check_x = true, bool check_y = true, bool check_z = true)
 {
-    bool x = pos.x > boundsMin.x && pos.x < boundsMax.x;
-    bool y = pos.y > boundsMin.y && pos.y < boundsMax.y;
-    bool z = pos.z > boundsMin.z && pos.z < boundsMax.z;
+    bool x = true;
+    bool y = true;
+    bool z = true;
+    if (check_x) x = pos.x > boundsMin.x && pos.x < boundsMax.x;
+    if (check_y) y = pos.y > boundsMin.y && pos.y < boundsMax.y;
+    if (check_z) z = pos.z > boundsMin.z && pos.z < boundsMax.z;
+
     return x && y && z;
 }
 
@@ -148,8 +166,9 @@ float sampleErosion(float3 pos, s_erosionParams erosionParams, float time, float
 }
 
 // Samples the SDF
-float sampleSDF(float3 pos, s_rayMarchParams rayParams, s_cloudParams cloudParams)
+float sampleSDF(float3 pos, s_rayMarchParams rayParams, s_cloudParams cloudParams, float time)
 {
+    //float3 speed = (1, 0, 0.5) * time * 10.0;
     float3 uvw = (pos + cloudParams.cloudsScale / 2.0) / cloudParams.cloudsScale;
 
 #if defined(SHADER_STAGE_COMPUTE)
@@ -163,11 +182,18 @@ float sampleSDF(float3 pos, s_rayMarchParams rayParams, s_cloudParams cloudParam
     return min3(res); 
 }
 
+float sampleFog(float3 pos, float YfadeStart, float YfadeEnd)
+{
+    float t = 1 - clamp(max((pos.y - YfadeStart) / (YfadeEnd - YfadeStart), 0), 0, 1);
+    return t;
+}
+
 float sampleDensity(float3 pos, s_cloudParams cloudParams, s_erosionParams erosionParams, s_rayMarchParams rayParams, float time)
 {
     float fadeTop = saturate(distance(pos.y, cloudParams.boundsMax.y) / 250);
-    float fadeBottom = saturate(distance(pos.y, cloudParams.boundsMin.y) / 50);
+    float fadeBottom = saturate(distance(pos.y, cloudParams.boundsMin.y) / 500);
     float fade = min(fadeTop, fadeBottom);
+
     if (erosionParams.erode)
     {
         float erosion = sampleErosion(pos, erosionParams, time, cloudParams.globalDensity);
@@ -178,21 +204,17 @@ float sampleDensity(float3 pos, s_cloudParams cloudParams, s_erosionParams erosi
 
         // Apply erosion
         float3 erodedPos = pos + erosion * erosionParams.worldScale * fade;
-        if (sampleSDF(erodedPos, rayParams, cloudParams) < 0)
-        {
-            return cloudParams.globalDensity * fade;
-        }
-        return 0;
+        return cloudParams.globalDensity * fade * (sampleSDF(erodedPos, rayParams, cloudParams, time) < rayParams.sdfThreshold);
     }
     else
     {
-        return cloudParams.globalDensity * fade;
+        return cloudParams.globalDensity * fade * (sampleSDF(pos, rayParams, cloudParams, time) < rayParams.sdfThreshold);
     }
 }
 
 s_lightMarchResult lightMarch_sdf(float3 samplePos, s_rayMarchParams rayParams, s_cloudParams cloudParams, s_erosionParams erosionParams, s_lightParams lightParams, float time)
 {
-    float dstInsideBox = rayBoxDst(samplePos, lightParams.lightDir, cloudParams.boundsMin, cloudParams.boundsMax).y;
+    float dstInsideBox = rayBoxDst(samplePos, lightParams.lightDir, cloudParams.boundsMin, cloudParams.boundsMax).dstInsideBox;
     float dstTravelled = rayParams.offset / 8.0;
     float3 currentPos = samplePos + lightParams.lightDir * dstTravelled;
     float sdfValue = 0.1;
@@ -216,7 +238,7 @@ s_lightMarchResult lightMarch_sdf(float3 samplePos, s_rayMarchParams rayParams, 
             break;
         }
 
-        sdfValue = sampleSDF(currentPos, rayParams, cloudParams);
+        sdfValue = sampleSDF(currentPos, rayParams, cloudParams, time);
 
         if (sdfValue <= rayParams.sdfThreshold) // Inside the cloud
         {
@@ -312,26 +334,39 @@ float sampleTransmittanceMap(float3 pos, float3 mapOrigin, float3 mapCoverage, s
     float3 uvw = (pos - mapOrigin) / mapCoverage + float3(0.5, 0.5, 0.5);
     return tex3D(map, uvw).r;
 }
+#endif
 
-float getCloudShadowing(float3 pos, float3 lightDir, float3 containerBoundsMin, float3 containerBoundsMax, sampler3D transmittanceMap, float3 transmittanceMapOrigin, float3 transmittanceMapCoverage)
+#if defined(SHADER_STAGE_COMPUTE) 
+float sampleTransmittanceMap(float3 pos, float3 mapOrigin, float3 mapCoverage, Texture3D<float> map, SamplerState sampler_map)
 {
-    // Shoot ray towards light
-    float2 rayBoxInfo = rayBoxDst(pos, -lightDir, containerBoundsMin, containerBoundsMax);
-    float dstToBox = rayBoxInfo.x;
-    float dstInsideBox = rayBoxInfo.y;
-
-    if (dstInsideBox <= 0) return 0;
-    
-    // Project ray onto the transmittanceMap, if underneath
-    float3 samplePos = pos + (dstToBox + 0.1) * (-lightDir);
-
-    // Check if inside the map
-    if (!isInBox_size(samplePos, transmittanceMapOrigin, transmittanceMapCoverage)) return 0;
-    
-    // Sample the map and get the shadowing
-    float transmittance = sampleTransmittanceMap(samplePos, transmittanceMapOrigin, transmittanceMapCoverage, transmittanceMap);
-    return 1 - saturate(transmittance);
+    float3 uvw = (pos - mapOrigin) / mapCoverage + float3(0.5, 0.5, 0.5);
+    return map.SampleLevel(sampler_map, uvw, 0).r;
 }
 #endif
 
+#if defined(SHADER_STAGE_FRAGMENT)
+float getCloudShadowing(float3 pos, float3 lightDir, float3 containerBoundsMin, float3 containerBoundsMax, sampler3D transmittanceMap, float3 transmittanceMapOrigin, float3 transmittanceMapCoverage)
+#elif defined(SHADER_STAGE_COMPUTE)
+float getCloudShadowing(float3 pos, float3 lightDir, float3 containerBoundsMin, float3 containerBoundsMax, Texture3D<float> transmittanceMap, SamplerState sampler_TransmittanceMap, float3 transmittanceMapOrigin, float3 transmittanceMapCoverage)
+#endif
+{
+    // Shoot ray towards light
+    rayBoxInfo rayBoxRes = rayBoxDst(pos, -lightDir, containerBoundsMin, containerBoundsMax);
+
+    if (rayBoxRes.dstInsideBox <= 0) return 1;
+    
+    // Project ray onto the transmittanceMap, if underneath
+    float3 samplePos = pos + (rayBoxRes.dstToBox + 0.1) * (-lightDir);
+
+    // Check if inside the map
+    //if (!isInBox_size(samplePos, transmittanceMapOrigin, transmittanceMapCoverage)) return 1;
+    
+    // Sample the map and get the shadowing
+    #if defined(SHADER_STAGE_FRAGMENT)
+    return sampleTransmittanceMap(samplePos, transmittanceMapOrigin, transmittanceMapCoverage, transmittanceMap);
+    #elif defined (SHADER_STAGE_COMPUTE)
+    return sampleTransmittanceMap(samplePos, transmittanceMapOrigin, transmittanceMapCoverage, transmittanceMap, sampler_TransmittanceMap);
+    #endif
+}
+ 
 #endif // CLOUDS_LIB_INCLUDED
