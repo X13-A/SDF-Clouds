@@ -153,7 +153,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1749310621}
-  m_RootOrder: 4
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &210102799
 MonoBehaviour:
@@ -199,10 +199,9 @@ MonoBehaviour:
   postProcessMaterial: {fileID: 2100000, guid: 890d894be31d11243b60c0fe761820ab, type: 2}
   active: 1
   rayMarchCompute: {fileID: 7200000, guid: 4f01e2cb3ab084841b0246c4daa238b5, type: 3}
-  rayMarchViz: {fileID: 0}
   renderScale: 1
-  renderWidth: 762
-  renderHeight: 211
+  renderWidth: 956
+  renderHeight: 424
 --- !u!1 &217724440
 GameObject:
   m_ObjectHideFlags: 0
@@ -303,7 +302,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1749310621}
-  m_RootOrder: 2
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0.436, y: -0.492, z: -0.856}
 --- !u!114 &314191713
 MonoBehaviour:
@@ -330,9 +329,9 @@ MonoBehaviour:
   textureHeight: 32
   textureDepth: 128
   useErosion: 1
-  cloudsV3: {fileID: 1380005721}
+  cloudsV3: {fileID: 0}
   cloudsV4: {fileID: 210102799}
-  Refresh: 0
+  Refresh: 1
 --- !u!1 &462106092
 GameObject:
   m_ObjectHideFlags: 0
@@ -741,7 +740,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1749310621}
-  m_RootOrder: 1
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &986982632
 BoxCollider:
@@ -989,80 +988,6 @@ Texture3D:
     offset: 0
     size: 0
     path: 
---- !u!1 &1380005719
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1380005720}
-  - component: {fileID: 1380005721}
-  m_Layer: 0
-  m_Name: CloudsManager V3
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1380005720
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1380005719}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 100000, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1749310621}
-  m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1380005721
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1380005719}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a8f2991089f7c34f89f3e7dafa6b899, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  shapeSDF: {fileID: 11700000, guid: 874f66305474ce74eb6d8dfb9c39df62, type: 2}
-  erosionTextureScale: 250
-  erosionWorldScale: 50
-  erosionIntensity: 1
-  erosionSpeed: {x: 15, y: -10, z: 10}
-  erosionTexture: {fileID: 11700000, guid: 02fef1382c4f5bf4e9b59665fb157258, type: 2}
-  cloudsScale: {x: 2048, y: 1024, z: 2048}
-  globalDensity: 0.005
-  offsetNoise: {fileID: 2800000, guid: fc25f22ce5627394587bd47b80b64ee0, type: 3}
-  offsetNoiseIntensity: 500
-  cloudMinStepSize: 25
-  lightMinStepSize: 10
-  cloudMaxSteps: 500
-  sdfThreshold: 10
-  renderDistance: 10000
-  sunlightAbsorption: 0.5
-  phaseParams: {x: 0.975, y: 0.9}
-  shadowsIntensity: 0
-  usePowderEffect: 0
-  powderBrightness: 1.95
-  powderIntensity: 2
-  fogDensity: 1.5
-  fogDistance: 1500
-  fogStepSize: 100
-  cloudsContainer: {fileID: 986982631}
-  fogContainer: {fileID: 1687567854}
-  postProcessMaterial: {fileID: 2100000, guid: 6a18e5a65c738d44f9c061509aca96c3, type: 2}
-  active: 1
-  rayMarchCompute: {fileID: 7200000, guid: 4f01e2cb3ab084841b0246c4daa238b5, type: 3}
-  rayMarchViz: {fileID: 0}
 --- !u!1 &1472065978
 GameObject:
   m_ObjectHideFlags: 0
@@ -1146,7 +1071,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1491809992}
   - component: {fileID: 1491809993}
-  - component: {fileID: 1491809994}
   m_Layer: 0
   m_Name: Generator
   m_TagString: Untagged
@@ -1186,18 +1110,6 @@ MonoBehaviour:
   compute: 0
   outputPath: Assets/Volumetric Clouds/V3/Textures/CloudScape1
   threshold: 0.4
---- !u!114 &1491809994
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1491809991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 696c72bd591cd1741882b4060aa90094, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1606140349
 GameObject:
   m_ObjectHideFlags: 0
@@ -1329,7 +1241,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1749310621}
-  m_RootOrder: 3
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &1687567855
 BoxCollider:
@@ -1372,7 +1284,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1380005720}
   - {fileID: 986982631}
   - {fileID: 314191712}
   - {fileID: 1687567854}

@@ -177,20 +177,20 @@ MonoBehaviour:
   cloudsScale: {x: 2048, y: 1024, z: 2048}
   globalDensity: 0.005
   offsetNoise: {fileID: 2800000, guid: fc25f22ce5627394587bd47b80b64ee0, type: 3}
-  offsetNoiseIntensity: 50
+  offsetNoiseIntensity: 250
   cloudMinStepSize: 25
   lightMinStepSize: 10
   cloudMaxSteps: 500
   sdfThreshold: 10
   renderDistance: 10000
   sunlightAbsorption: 0.5
-  phaseParams: {x: 0.975, y: 0.9}
+  phaseParams: {x: 0.9725, y: 0.9}
   shadowsIntensity: 0
   usePowderEffect: 0
   powderBrightness: 1.95
   powderIntensity: 2
-  fogDensity: 1.5
-  fogDistance: 1500
+  fogDensity: 1.35
+  fogDistance: 0
   fogStepSize: 100
   directionalLight: {fileID: 1921114886}
   cloudsContainer: {fileID: 986982631}
@@ -200,8 +200,8 @@ MonoBehaviour:
   active: 1
   rayMarchCompute: {fileID: 7200000, guid: 4f01e2cb3ab084841b0246c4daa238b5, type: 3}
   renderScale: 1
-  renderWidth: 3840
-  renderHeight: 2160
+  renderWidth: 1144
+  renderHeight: 459
 --- !u!1 &217724440
 GameObject:
   m_ObjectHideFlags: 0
@@ -319,14 +319,14 @@ MonoBehaviour:
   offsetNoise: {fileID: 2800000, guid: fc25f22ce5627394587bd47b80b64ee0, type: 3}
   offsetNoiseIntensity: 150
   lightForwardTransform: {fileID: 946255849}
-  mapWidth: 4000
+  mapWidth: 40000
   mapHeight: 1000
-  mapDepth: 4000
+  mapDepth: 40000
   mapCompute: {fileID: 7200000, guid: 54c9af4b9a77feb4bac62eadaf805e4b, type: 3}
   mapViz: {fileID: 1250131399}
-  textureWidth: 128
-  textureHeight: 32
-  textureDepth: 128
+  textureWidth: 512
+  textureHeight: 16
+  textureDepth: 512
   useErosion: 1
   cloudsV3: {fileID: 1380005721}
   cloudsV4: {fileID: 210102799}
@@ -605,7 +605,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   processings:
-  - {fileID: 1380005721}
+  - {fileID: 210102799}
 --- !u!81 &954986871
 AudioListener:
   m_ObjectHideFlags: 0
@@ -698,7 +698,7 @@ Transform:
   m_GameObject: {fileID: 986982630}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1000, z: 0}
-  m_LocalScale: {x: 4000, y: 1000, z: 4000}
+  m_LocalScale: {x: 40000, y: 1000, z: 40000}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1749310621}
@@ -1009,7 +1009,7 @@ MonoBehaviour:
   cloudMaxSteps: 500
   sdfThreshold: 10
   renderDistance: 10000
-  sunlightAbsorption: 0.5
+  sunlightAbsorption: 0.35
   phaseParams: {x: 0.975, y: 0.9}
   shadowsIntensity: 0
   usePowderEffect: 0
@@ -1112,7 +1112,7 @@ Transform:
   m_GameObject: {fileID: 1687567853}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 750, z: 0}
-  m_LocalScale: {x: 4000, y: 1500, z: 4000}
+  m_LocalScale: {x: 40000, y: 1500, z: 40000}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1749310621}

@@ -97,6 +97,7 @@ public class CloudsPostProcess_V4 : PostProcessBase
 
     public void SetupTransmittanceMap(RenderTexture mapTexture, Vector3 mapOrigin, Vector3Int mapResolution, Vector3 mapCoverage)
     {
+        Debug.Log("Transmittance map set in clouds shader");
         rayMarchCompute.SetTexture(rayMarchKernel, "_TransmittanceMap", mapTexture);
         rayMarchCompute.SetVector("_TransmittanceMapOrigin", mapOrigin);
         rayMarchCompute.SetVector("_TransmittanceMapCoverage", mapCoverage);

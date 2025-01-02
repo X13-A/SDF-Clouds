@@ -50,7 +50,7 @@ Shader"Custom/Volumetrics/CloudsV4"
 
                 float4 cloudColor = float4(_LightColor0.rgb, 0);
                 cloudColor = cloudColor * lightEnergy;
-                return float4(backgroundColor.rgb * transmittance + cloudColor.rgb * (1 - transmittance), 1);
+                return float4(backgroundColor.rgb * transmittance + cloudColor.rgb, 1);
             }
             ENDCG
         }

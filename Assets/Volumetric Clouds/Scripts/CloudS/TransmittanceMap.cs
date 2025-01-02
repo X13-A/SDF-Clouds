@@ -45,7 +45,7 @@ public class TransmittanceMap : MonoBehaviour
 
     private void Setup()
     {
-        if (cloudsV3 == null) return;
+        if (cloudsV3 == null && cloudsV4 == null) return;
         if (lightForwardTransform == null) return;
 
         UnityEngine.Object.DestroyImmediate(MapRenderTexture);
@@ -64,14 +64,22 @@ public class TransmittanceMap : MonoBehaviour
 
     private void Update()
     {
-        if (Camera.main == null) return;
-        if (cloudsV3 == null) return;
-        if (cloudsV4 == null) return;
+        if (Camera.main == null)
+        {
+            Debug.LogWarning("No camera available");
+            return;
+        }
+        if (cloudsV3 == null && cloudsV4 == null) return;
+        if (MapRenderTexture == null)
+        {
+            Debug.LogWarning("RenderTexture not created");
+        }
         if (Refresh)
         {
             Refresh = false;
             Setup();
         }
+
 
         mapCompute.SetTexture(mapKernel, "_TransmittanceMap", MapRenderTexture);
 
