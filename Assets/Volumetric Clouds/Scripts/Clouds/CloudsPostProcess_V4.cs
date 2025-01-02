@@ -109,7 +109,6 @@ public class CloudsPostProcess_V4 : PostProcessBase
 
         Camera.current.depthTextureMode = DepthTextureMode.Depth;
 
-
         // Output
         rayMarchCompute.SetTexture(rayMarchKernel, "_Output", RayMarchRenderTexture);
         rayMarchCompute.SetInts("_OutputResolution", new int[] { RayMarchRenderTexture.width, RayMarchRenderTexture.height });

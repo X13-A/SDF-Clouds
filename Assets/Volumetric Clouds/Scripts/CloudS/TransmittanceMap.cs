@@ -9,7 +9,7 @@ public class TransmittanceMap : MonoBehaviour
     [SerializeField] private float offsetNoiseIntensity;
 
     [SerializeField] private Transform lightForwardTransform;
-
+     
     [Header("Light projection params")]
     [SerializeField] private float mapWidth = 50f;
     [SerializeField] private float mapHeight = 50f;
@@ -32,20 +32,19 @@ public class TransmittanceMap : MonoBehaviour
     public int TextureDepth => textureDepth;
     private int mapKernel;
     [SerializeField] private bool useErosion = false;
-
-    [SerializeField] private CloudsPostProcess_V3 cloudsV3;
     [SerializeField] private CloudsPostProcess_V4 cloudsV4;
 
     public bool Refresh;
 
     private void Awake()
     {
+        Refresh = true;
         Setup();
     }
 
     private void Setup()
     {
-        if (cloudsV3 == null && cloudsV4 == null) return;
+        if (cloudsV4 == null) return;
         if (lightForwardTransform == null) return;
 
         UnityEngine.Object.DestroyImmediate(MapRenderTexture);
@@ -69,17 +68,22 @@ public class TransmittanceMap : MonoBehaviour
             Debug.LogWarning("No camera available");
             return;
         }
-        if (cloudsV3 == null && cloudsV4 == null) return;
+        if (cloudsV4 == null)
+        {
+            Debug.LogWarning("Missing reference to CloudsPostProcess");
+            return;
+        }
         if (MapRenderTexture == null)
         {
             Debug.LogWarning("RenderTexture not created");
         }
-        if (Refresh)
+        if (!Refresh)
         {
-            Refresh = false;
-            Setup();
+            return;
         }
 
+        Refresh = false;
+        Setup();
 
         mapCompute.SetTexture(mapKernel, "_TransmittanceMap", MapRenderTexture);
 
@@ -92,31 +96,31 @@ public class TransmittanceMap : MonoBehaviour
         mapCompute.SetMatrix("_InvViewMatrix", Camera.main.worldToCameraMatrix.inverse);
 
         // Shape
-        mapCompute.SetFloats("_BoundsMin", new float[] { cloudsV3.CloudsBoundsMin.x, cloudsV3.CloudsBoundsMin.y, cloudsV3.CloudsBoundsMin.z });
-        mapCompute.SetFloats("_BoundsMax", new float[] { cloudsV3.CloudsBoundsMax.x, cloudsV3.CloudsBoundsMax.y, cloudsV3.CloudsBoundsMax.z });
-        mapCompute.SetFloats("_CloudsScale", new float[] { cloudsV3.cloudsScale.x, cloudsV3.cloudsScale.y, cloudsV3.cloudsScale.z });
-        mapCompute.SetFloat("_GlobalDensity", cloudsV3.globalDensity);
+        mapCompute.SetFloats("_BoundsMin", new float[] { cloudsV4.CloudsBoundsMin.x, cloudsV4.CloudsBoundsMin.y, cloudsV4.CloudsBoundsMin.z });
+        mapCompute.SetFloats("_BoundsMax", new float[] { cloudsV4.CloudsBoundsMax.x, cloudsV4.CloudsBoundsMax.y, cloudsV4.CloudsBoundsMax.z });
+        mapCompute.SetFloats("_CloudsScale", new float[] { cloudsV4.cloudsScale.x, cloudsV4.cloudsScale.y, cloudsV4.cloudsScale.z });
+        mapCompute.SetFloat("_GlobalDensity", cloudsV4.globalDensity);
 
         // SDF
-        mapCompute.SetTexture(mapKernel, "_ShapeSDF", cloudsV3.shapeSDF);
-        mapCompute.SetInts("_ShapeSDFSize", new int[] { cloudsV3.shapeSDF.width, cloudsV3.shapeSDF.height, cloudsV3.shapeSDF.depth });
-        mapCompute.SetFloat("_ThresholdSDF", cloudsV3.sdfThreshold);
+        mapCompute.SetTexture(mapKernel, "_ShapeSDF", cloudsV4.shapeSDF);
+        mapCompute.SetInts("_ShapeSDFSize", new int[] { cloudsV4.shapeSDF.width, cloudsV4.shapeSDF.height, cloudsV4.shapeSDF.depth });
+        mapCompute.SetFloat("_ThresholdSDF", cloudsV4.sdfThreshold);
 
         // Lighting
         mapCompute.SetFloat("_LightMinStepSize", lightMinStepSize);
-        mapCompute.SetFloat("_SunLightAbsorption", cloudsV3.sunlightAbsorption);
+        mapCompute.SetFloat("_SunLightAbsorption", cloudsV4.sunlightAbsorption);
 
         // Powder effect
-        mapCompute.SetFloat("_PowderBrightness", cloudsV3.powderBrightness);
-        mapCompute.SetFloat("_PowderIntensity", cloudsV3.powderIntensity);
-        mapCompute.SetBool("_UsePowderEffect", cloudsV3.usePowderEffect);
+        mapCompute.SetFloat("_PowderBrightness", cloudsV4.powderBrightness);
+        mapCompute.SetFloat("_PowderIntensity", cloudsV4.powderIntensity);
+        mapCompute.SetBool("_UsePowderEffect", cloudsV4.usePowderEffect);
 
         // Erosion
-        mapCompute.SetTexture(mapKernel, "_Erosion", cloudsV3.erosionTexture);
-        mapCompute.SetFloat("_ErosionTextureScale", cloudsV3.erosionTextureScale);
-        mapCompute.SetFloat("_ErosionWorldScale", cloudsV3.erosionWorldScale);
-        mapCompute.SetFloats("_ErosionSpeed", new float[] { cloudsV3.erosionSpeed.x, cloudsV3.erosionSpeed.y, cloudsV3.erosionSpeed.z });
-        mapCompute.SetFloat("_ErosionIntensity", cloudsV3.erosionIntensity);
+        mapCompute.SetTexture(mapKernel, "_Erosion", cloudsV4.erosionTexture);
+        mapCompute.SetFloat("_ErosionTextureScale", cloudsV4.erosionTextureScale);
+        mapCompute.SetFloat("_ErosionWorldScale", cloudsV4.erosionWorldScale);
+        mapCompute.SetFloats("_ErosionSpeed", new float[] { cloudsV4.erosionSpeed.x, cloudsV4.erosionSpeed.y, cloudsV4.erosionSpeed.z });
+        mapCompute.SetFloat("_ErosionIntensity", cloudsV4.erosionIntensity);
         mapCompute.SetBool("_UseErosion", useErosion);
 
         // Others
@@ -124,14 +128,13 @@ public class TransmittanceMap : MonoBehaviour
         mapCompute.SetFloat("_OffsetNoiseIntensity", offsetNoiseIntensity);
 
         // Position & size
-        mapCompute.SetFloats("_StartPos", new float[] { cloudsV3.CloudsContainerCenter.x, cloudsV3.CloudsContainerCenter.y, cloudsV3.CloudsContainerCenter.z });
+        mapCompute.SetFloats("_StartPos", new float[] { cloudsV4.CloudsContainerCenter.x, cloudsV4.CloudsContainerCenter.y, cloudsV4.CloudsContainerCenter.z });
         mapCompute.SetFloats("_TransmittanceMapCoverage", new float[] { mapWidth, mapHeight, mapDepth });
         mapCompute.SetInts("_TransmittanceMapResolution", new int[] { textureWidth, textureHeight, TextureDepth });
 
         // Dispatch
         mapCompute.Dispatch(mapKernel, Mathf.CeilToInt(textureWidth / 8.0f), Mathf.CeilToInt(textureHeight / 8.0f), Mathf.CeilToInt(textureDepth / 8.0f));
-        cloudsV3.SetupTransmittanceMap(MapRenderTexture, cloudsV3.CloudsContainerCenter, new Vector3Int(textureWidth, textureHeight, textureDepth), new Vector3(mapWidth, mapHeight, mapDepth));
-        cloudsV4.SetupTransmittanceMap(MapRenderTexture, cloudsV3.CloudsContainerCenter, new Vector3Int(textureWidth, textureHeight, textureDepth), new Vector3(mapWidth, mapHeight, mapDepth));
+        cloudsV4.SetupTransmittanceMap(MapRenderTexture, cloudsV4.CloudsContainerCenter, new Vector3Int(textureWidth, textureHeight, textureDepth), new Vector3(mapWidth, mapHeight, mapDepth));
         //StartCoroutine(RenderingUtils.ConvertRenderTextureToTexture3D(MapRenderTexture, 1, TextureFormat.R8, TextureWrapMode.Clamp, FilterMode.Bilinear, (Texture3D res) =>
         //{
         //    mapViz = res;
