@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: CloudsPostProcessMaterial_V3
-  m_Shader: {fileID: 4800000, guid: fd8d270bf9a2a9e4c846e89ddf9c69a6, type: 3}
+  m_Name: CloudsPostProcessMaterial
+  m_Shader: {fileID: 4800000, guid: 890ed0f523e8dbe48bc5d139045c1e07, type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4

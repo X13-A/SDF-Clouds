@@ -32,7 +32,7 @@ public class TransmittanceMap : MonoBehaviour
     public int TextureDepth => textureDepth;
     private int mapKernel;
     [SerializeField] private bool useErosion = false;
-    [SerializeField] private CloudsPostProcess_V4 cloudsV4;
+    [SerializeField] private CloudsPostProcess cloudsV4;
 
     public bool Refresh;
 

@@ -156,7 +156,6 @@ cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightPar
         float fogDensity = sampleFog(currentPos, _CloudsBoundsMin.y, _CloudsBoundsMax.y - _CloudsBoundsMin.y / 2);
         fogDensity *= stepSize * pow(max(dstTravelled - _FogDistance, 0), 2);
         fogDensity *= pow(_FogDensity / 100000, 2);
-        density += fogDensity;
 
         // Sample transmittance at current pos
         float lightTransmittance;
@@ -189,7 +188,7 @@ cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightPar
             {
                 // Only erode edges to improve performance
                 erosionParams.erode = erosionParams.erode && abs(sdfValue) <= _ErosionWorldScale * 2;
-                density += sampleDensity(currentPos, cloudParams, erosionParams, rayParams, _CustomTime) * stepSize;
+                density = sampleDensity(currentPos, cloudParams, erosionParams, rayParams, _CustomTime) * stepSize;
             }
         }
         else
@@ -203,8 +202,8 @@ cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightPar
         }
                     
         // Apply light and density
-        res.lightEnergy += density * res.transmittance * lightTransmittance;
-        res.transmittance *= beer(density);
+        res.lightEnergy += (fogDensity + density) * res.transmittance * lightTransmittance;
+        res.transmittance *= beer(fogDensity + density);
         
         // Advance ray
         dstTravelled += stepSize;

@@ -134,7 +134,7 @@ GameObject:
   - component: {fileID: 210102798}
   - component: {fileID: 210102799}
   m_Layer: 0
-  m_Name: CloudsManager V4
+  m_Name: CloudsManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -200,8 +200,8 @@ MonoBehaviour:
   active: 1
   rayMarchCompute: {fileID: 7200000, guid: 4f01e2cb3ab084841b0246c4daa238b5, type: 3}
   renderScale: 1
-  renderWidth: 1099
-  renderHeight: 469
+  renderWidth: 884
+  renderHeight: 432
 --- !u!1 &217724440
 GameObject:
   m_ObjectHideFlags: 0
@@ -327,7 +327,7 @@ MonoBehaviour:
   textureWidth: 512
   textureHeight: 16
   textureDepth: 512
-  useErosion: 1
+  useErosion: 0
   cloudsV4: {fileID: 210102799}
   Refresh: 0
 --- !u!1 &462106092
@@ -645,7 +645,7 @@ Camera:
   m_CullingMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_RenderingPath: -1
+  m_RenderingPath: 3
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3

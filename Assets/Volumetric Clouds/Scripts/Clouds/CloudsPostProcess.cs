@@ -7,7 +7,7 @@ using UnityEngine.UI;
 using UnityEngine.UIElements;
 
 [ExecuteInEditMode]
-public class CloudsPostProcess_V4 : PostProcessBase
+public class CloudsPostProcess : PostProcessBase
 {
     [Header("V4 Parameters")]
     [SerializeField] public Texture3D shapeSDF;
@@ -101,6 +101,11 @@ public class CloudsPostProcess_V4 : PostProcessBase
         rayMarchCompute.SetTexture(rayMarchKernel, "_TransmittanceMap", mapTexture);
         rayMarchCompute.SetVector("_TransmittanceMapOrigin", mapOrigin);
         rayMarchCompute.SetVector("_TransmittanceMapCoverage", mapCoverage);
+
+        postProcessMaterial.SetTexture("_TransmittanceMap", mapTexture);
+        postProcessMaterial.SetVector("_TransmittanceMapOrigin", mapOrigin);
+        postProcessMaterial.SetVector("_TransmittanceMapCoverage", mapCoverage);
+        postProcessMaterial.SetVector("_TransmittanceMapResolution", new Vector3(mapResolution.x, mapResolution.y, mapResolution.z));
     }
 
     private void Compute_RayMarch()
@@ -178,7 +183,8 @@ public class CloudsPostProcess_V4 : PostProcessBase
     private void SetMaterialUniforms()
     {
         postProcessMaterial.SetTexture("_LightTransmittanceTex", RayMarchRenderTexture);
-
+        postProcessMaterial.SetVector("_BoundsMin", CloudsBoundsMin);
+        postProcessMaterial.SetVector("_BoundsMax", CloudsBoundsMax);
     }
 
     private int screenWidth;
@@ -187,7 +193,7 @@ public class CloudsPostProcess_V4 : PostProcessBase
 
     public override void Apply(RenderTexture source, RenderTexture dest)
     {
-        // Detech changes in resolution
+        // Detect changes in resolution
         if (Screen.width != screenWidth || Screen.height != screenHeight || renderScale != lastRenderScale)
         {
             refresh = true;
