@@ -1,0 +1,89 @@
+#pragma kernel CSMain
+
+// The 3D texture that we will write to
+RWTexture3D<float4> Result;
+
+// The buffer containing points data
+StructuredBuffer<float3> pointsBuffer;
+
+// Uniforms
+int pointsBufferLength;
+int3 textureDimensions;
+float attenuation;
+int octaves;
+float radius;
+
+bool attenuate_vertically;
+int attenuate_top_exponent;
+int attenuate_bottom_exponent;
+
+float worleyNoise(int3 id)
+{
+    // Compute the normalized position within the texture
+    float3 normalizedPos = id / float3(textureDimensions);
+    
+    float verticalRatio = textureDimensions.x / (float) textureDimensions.y;
+    normalizedPos.y /= verticalRatio;
+    
+    // Initialize the Worley noise value
+    float worleyNoise = 0.0;
+    
+    // Accumulate results from each octave
+    float amplitude = 1.0;
+    float frequency = 1.0;
+    float maxAmplitude = 0.0; // Used to normalize the result
+    
+    for (int octave = 0; octave < octaves; ++octave)
+    {
+        // Scale the position for the current octave
+        float3 scaledPos = normalizedPos * frequency;
+        
+        // Initialize the minimum distance with a large value
+        float minDist = 1e10;
+        
+        // Iterate through the points buffer to find the closest point
+        for (int i = 0; i < pointsBufferLength; ++i)
+        {
+            // Compute the distance from the current point to the scaled position
+            float newDist = distance(fmod(scaledPos, 1.0), pointsBuffer[i]);
+            
+            // Update the minimum distance
+            if (newDist < minDist)
+            {
+                minDist = newDist;
+            }
+        }
+        
+        // Calculate the Worley noise value for this octave
+        worleyNoise += (1.0 - (minDist * radius)) * amplitude;
+        
+        // Update amplitude and frequency for the next octave
+        maxAmplitude += amplitude;
+        amplitude *= attenuation;
+        frequency *= 2.0;
+    }
+    
+    // Normalize the Worley noise value
+    worleyNoise /= maxAmplitude;
+    
+    if (attenuate_vertically)
+    {
+        float topAttenuation = (id.y / (float) textureDimensions.y);
+        topAttenuation = pow(topAttenuation, 2);
+        topAttenuation = 1 - saturate(topAttenuation);
+        worleyNoise *= topAttenuation;
+    
+        float bottomAttenuation = 1 - (id.y / (float) textureDimensions.y);
+        bottomAttenuation = pow(bottomAttenuation, 8);
+        bottomAttenuation = 1 - saturate(bottomAttenuation);
+        worleyNoise *= bottomAttenuation;
+    }
+    
+    return worleyNoise;
+}
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    Result[id] = worleyNoise(id);
+}

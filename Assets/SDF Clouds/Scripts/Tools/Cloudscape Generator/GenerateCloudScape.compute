@@ -1,0 +1,115 @@
+#pragma kernel CSMain
+
+RWTexture3D<float4> CloudTexture;
+
+// Parameters
+uint3 _CloudsSize;
+float _CloudsThreshold;
+float3 _CloudsScale;
+float3 _CloudsOffset;
+uint _CloudsSeed;
+float _BorderAttenuation;
+
+// Hash function with seed
+uint hash(uint x, uint seed) 
+{
+    x =  x ^ seed;
+    x += (x << 10u);
+    x ^= (x >> 6u);
+    x += (x << 3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+
+// Linear interpolation
+float lerp(float a, float b, float t)
+{
+    return a + t * (b - a);
+}
+
+// Compute the dot product of the distance and gradient vectors
+float grad(int hash, float x, float y)
+{
+    int h = hash & 15;
+    float u = h < 8 ? x : y;
+    float v = h < 4 ? y : h == 12 || h == 14 ? x : 0.0;
+    return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
+}
+
+
+// 2D Perlin noise function with seed
+float perlinNoise(float x, float y, uint seed)
+{
+    int ix = (int)floor(x) & 255;
+    int iy = (int)floor(y) & 255;
+    x -= floor(x);
+    y -= floor(y);
+    float u = x * x * x * (x * (x * 6 - 15) + 10);
+    float v = y * y * y * (y * (y * 6 - 15) + 10);
+    int a = hash(ix, seed) + iy;
+    int b = hash(ix + 1, seed) + iy;
+    float r = lerp(lerp(grad(hash(a, seed), x, y), grad(hash(b, seed), x - 1, y), u),
+                   lerp(grad(hash(a + 1, seed), x, y - 1), grad(hash(b + 1, seed), x - 1, y - 1), u), v);
+    return (r + 1.0) / 2.0;
+}
+
+float get2DNoise(float x, float z, float2 scale, float2 offset, uint seed)
+{
+    float2 adjustedScale = scale.xy / 983.3546789f; // Pour eviter les valeurs entieres
+    return perlinNoise(offset.x + x * adjustedScale.x, offset.y + z * adjustedScale.y, seed);
+}
+
+// 3D noise function that combines multiple Perlin noise calculations
+float get3DNoise(float x, float y, float z, float3 scale, float3 offset, uint seed)
+{
+    float3 adjustedScale = scale / 983.3546789f;
+    float ab = perlinNoise(offset.x + x * adjustedScale.x, offset.y + y * adjustedScale.y, seed);
+    float bc = perlinNoise(offset.y + y * adjustedScale.y, offset.z + z * adjustedScale.z, seed);
+    float ac = perlinNoise(offset.x + x * adjustedScale.x, offset.z + z * adjustedScale.z, seed);
+
+    float ba = perlinNoise(offset.y + y * adjustedScale.y, offset.x + x * adjustedScale.x, seed);
+    float cb = perlinNoise(offset.z + z * adjustedScale.z, offset.y + y * adjustedScale.y, seed);
+    float ca = perlinNoise(offset.z + z * adjustedScale.z, offset.x + x * adjustedScale.x, seed);
+
+    return (ab + bc + ac + ba + cb + ca) / 6.0f;
+}
+
+float dstFromBorder(float3 pos)
+{
+    float dstX = min(pos.x, abs(_CloudsSize.x - pos.x));
+    float dstY = min(pos.y, abs(_CloudsSize.y - pos.y));
+    float dstZ = min(pos.z, abs(_CloudsSize.z - pos.z));
+    return min(min(dstX, dstY), dstZ);
+}
+
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Check if in bounds
+    if (id.x >= _CloudsSize.x || id.y >= _CloudsSize.y || id.z >= _CloudsSize.z) return;
+
+    float noiseClouds = get3DNoise(id.x, id.y, id.z, _CloudsScale, _CloudsOffset, _CloudsSeed);
+    float borderDist = dstFromBorder(id);
+
+    float threshold = _CloudsThreshold;
+    
+    
+    // threshold /= (saturate(borderDist * borderDist * _BorderAttenuation)); 
+    threshold = (id.y + _CloudsThreshold * _CloudsScale.y) / _CloudsScale.y;
+    
+    //float coverage = get2DNoise(id.x, id.z, float2(1, 1) * 5, float2(12434.32451532, 12434.32451532), 0);
+    //coverage = 1 - saturate(coverage);
+    //float coverageImpact = 0.20;
+    //threshold += coverageImpact - saturate(coverage * coverageImpact);
+
+    if (noiseClouds >= threshold)
+    {
+        CloudTexture[id] = 1;
+    }
+    else
+    {
+        CloudTexture[id] = 0;
+    }
+}

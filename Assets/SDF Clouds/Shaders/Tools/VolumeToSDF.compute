@@ -1,0 +1,101 @@
+#pragma kernel CSMain
+
+// Input 3D texture
+Texture3D<float> _VolumeTexture;
+
+// Output 3D texture (SDF)
+RWTexture3D<float> _SDFTexture;
+
+// Texture size
+int3 _TextureSize;
+
+// Chunk offset and size
+int3 _ChunkOffset;
+int3 _ChunkSize;
+
+
+#define MAX_RADIUS 20 // Maximum search radius
+
+float sampleVolumeTexture(int3 pos)
+{
+    // Repeat texture
+    pos.x = (pos.x % _TextureSize.x + _TextureSize.x) % _TextureSize.x;
+    pos.y = (pos.y % _TextureSize.y + _TextureSize.y) % _TextureSize.y;
+    pos.z = (pos.z % _TextureSize.z + _TextureSize.z) % _TextureSize.z;
+
+    return _VolumeTexture[pos].r;
+}
+bool isInsideVolume(float value)
+{
+    return value > 0.1;
+}
+
+// Function to calculate the distance from a voxel to the nearest surface voxel
+float calculateDistance(int3 pos)
+{
+    float3 fPos = float3(pos);
+    float minDistance = float(MAX_RADIUS); // Initialize with the max search radius
+    bool insideVolume = isInsideVolume(sampleVolumeTexture(pos)); // Check if the current position is inside the volume
+
+    // Iterate over a cube of size (2 * MAX_RADIUS + 1)
+    for (int z = -MAX_RADIUS; z <= MAX_RADIUS; z++)
+    {
+        for (int y = -MAX_RADIUS; y <= MAX_RADIUS; y++)
+        {
+            for (int x = -MAX_RADIUS; x <= MAX_RADIUS; x++)
+            {
+                int3 offset = int3(x, y, z);
+
+                // Skip voxels that are outside the sphere
+                if (length(float3(offset)) > MAX_RADIUS)
+                    continue;
+
+                int3 samplePos = pos + offset;
+                float value = sampleVolumeTexture(samplePos);
+
+                if (insideVolume)
+                {
+                    // When inside the volume, look for the nearest edge (transition from positive to 0)
+                    if (!isInsideVolume(value))
+                    {
+                        float dist = distance(float3(samplePos), fPos);
+
+                        if (dist < minDistance)
+                        {
+                            minDistance = dist;
+                        }
+                    }
+                }
+                else
+                {
+                    // When outside the volume, look for the nearest positive voxel
+                    if (isInsideVolume(value))
+                    {
+                        float dist = distance(float3(samplePos), fPos);
+
+                        if (dist < minDistance)
+                        {
+                            minDistance = dist;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // If inside the volume, return a negative distance
+    return insideVolume ? -minDistance : minDistance;
+}
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Calculate the position in the full texture based on the chunk offset
+    int3 pos = int3(id) + _ChunkOffset;
+
+    // Calculate the signed distance for the current voxel
+    float distance = calculateDistance(pos);
+
+    // Write the result to the SDF texture
+    _SDFTexture[pos] = distance;
+}

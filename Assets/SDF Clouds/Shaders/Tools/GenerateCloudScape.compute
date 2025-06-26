@@ -1,0 +1,105 @@
+#pragma kernel CSMain
+
+RWTexture3D<float4> CloudTexture;
+
+// Uniforms
+uint3 _TextureSize;
+float _CloudsThreshold;
+float2 _CoverageScale;
+float2 _CoverageOffset;
+float _CoverageMultiplier;
+bool _Attenuate_vertically;
+int _Attenuate_top_exponent;
+int _Attenuate_bottom_exponent;
+float _VerticalScale;
+
+// The buffer containing points data
+StructuredBuffer<float3> _PointsBuffer;
+int _PointsBufferLength;
+float _Attenuation;
+float _Radius;
+int _Octaves;
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Compute the normalized position within the texture
+    float3 normalizedPos = id / float3(_TextureSize);
+    
+    // Fix ratio
+    normalizedPos /= float3(1, max(_TextureSize.x, _TextureSize.z) / (float) _TextureSize.y, 1);
+    
+    // Scale vertically
+    normalizedPos /= float3(1, _VerticalScale, 1);
+    
+    // Initialize the Worley noise value
+    float noise = 0.0;
+    
+    // Accumulate results from each octave
+    float amplitude = 1.0;
+    float frequency = 1.0;
+    float totalAmplitude = 0.0; // Used to normalize the result
+    
+    for (int octave = 0; octave < _Octaves; ++octave)
+    {
+        // Scale the position for the current octave
+        float3 scaledPos = normalizedPos * frequency;
+        
+        // Initialize the minimum distance with a large value
+        float minDist = 1e10;
+        
+        // Iterate through the points buffer to find the closest point
+        for (int i = 0; i < _PointsBufferLength; ++i)
+        {
+            // Compute the distance from the current point to the scaled position
+            float newDist = distance(fmod(scaledPos, 1.0), _PointsBuffer[i]);
+            
+            // Update the minimum distance
+            if (newDist < minDist)
+            {
+                minDist = newDist;
+            }
+        }
+        
+        // Calculate the Worley noise value for this octave
+        noise += (1.0 - (minDist * _Radius)) * amplitude;
+        
+        // Update amplitude and frequency for the next octave
+        totalAmplitude += amplitude;
+        amplitude *= _Attenuation;
+        frequency *= 2.0;
+    }
+    
+    // Normalize the Worley noise value
+    noise /= totalAmplitude;
+    if (_Attenuate_vertically)
+    {
+        float topAttenuation = (id.y / (float) _TextureSize.y);
+        topAttenuation = pow(saturate(topAttenuation), _Attenuate_top_exponent);
+        topAttenuation = 1 - topAttenuation;
+        noise *= topAttenuation;
+    
+        float bottomAttenuation = 1 - (id.y / (float) _TextureSize.y);
+        bottomAttenuation = pow(saturate(bottomAttenuation), _Attenuate_bottom_exponent);
+        bottomAttenuation = 1 - bottomAttenuation;
+        noise *= bottomAttenuation;
+    }
+    
+    // Coverage factor
+    //float coverage = get2DNoise(id.x, id.z, _CoverageScale, _CoverageOffset, 0) * _CoverageMultiplier;
+    //coverage = saturate(coverage);
+    //noise *= coverage;
+    
+    // Apply threshold and attenuation
+    float threshold = _CloudsThreshold;
+
+    // Assign final cloud texture value
+    if (noise >= threshold)
+    {
+        CloudTexture[id] = float4(1, 1, 1, 1); // Cloud voxel
+    }
+    else
+    {
+        CloudTexture[id] = float4(0, 0, 0, 0); // Empty space
+    }
+}

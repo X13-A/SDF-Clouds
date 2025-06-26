@@ -1,0 +1,354 @@
+#pragma kernel CSMain
+#include "./CloudsLib.cginc"
+#include "./SimplexNoise3D.cginc"
+#include "UnityCG.cginc"
+
+// Output
+RWTexture2D<float2> _Output;
+int2 _OutputResolution;
+
+// Sampling
+float _RenderDistance;
+int _CloudMaxSteps;
+float _CloudMinStepSize;
+float _GlobalDensity;
+
+// Depth texture
+Texture2D<float> _UnityDepthTexture;
+SamplerState sampler_UnityDepthTexture;
+uint2 _UnityDepthTextureSize;
+
+// Transmittance map
+float3 _TransmittanceMapOrigin;
+float3 _TransmittanceMapCoverage;
+Texture3D<float> _TransmittanceMap;
+SamplerState sampler_TransmittanceMap;
+
+// Fog
+float _FogDistance;
+float _FogDensity;
+float _FogStepSize;
+float _FogAbsorption;
+
+// Shape
+float3 _FogBoundsMin;
+float3 _FogBoundsMax;
+float3 _CloudsBoundsMin;
+float3 _CloudsBoundsMax;
+
+// View
+float4x4 _InvProjectionMatrix;
+float4x4 _InvViewMatrix;
+float3 _CameraPos;
+
+// Lighting
+float _DirectionalScattering;
+float3 _LightDir;
+float _LightMinStepSize;
+float _SunLightAbsorption;
+
+// Powder effect (not effective for now)
+float _PowderBrightness;
+float _PowderIntensity;
+bool _UsePowderEffect;
+
+// SDF
+Texture3D<float> _ShapeSDF;
+SamplerState sampler_ShapeSDF;
+int3 _ShapeSDFSize;
+float _ThresholdSDF;
+bool _UseSDFInsideClouds;
+float3 _SDFTextureScale;
+float3 _SDFTextureOffset; // NOT USED FOR NOW
+
+// Erosion
+Texture3D<float> _Erosion;
+SamplerState sampler_Erosion;
+bool _UseErosion;
+float _ErosionTextureScale;
+float _ErosionWorldScale;
+float3 _ErosionSpeed;
+float _ErosionIntensity;
+
+// Others
+float _CustomTime;
+float _OffsetNoiseIntensity;
+  
+float computeUnityDepth(uint3 id)
+{
+    // Calculate texture coordinates for sampling
+    float2 texelSize = 1.0 / float2(_OutputResolution);
+    float2 depthUV = (float2(id.xy) + float2(0.5, 0.5)) * texelSize;
+
+    // Hardcoded offsets for a 3x3 sampling kernel
+    float2 offsets[9] = 
+    {
+        float2(-1, -1), float2(0, -1), float2(1, -1),
+        float2(-1,  0), float2(0,  0), float2(1,  0),
+        float2(-1,  1), float2(0,  1), float2(1,  1)
+    };
+
+    // Find minimal depth in the current texel
+    // This is useful becauce clouds are rendered in a smaller resolution than the depth map
+    float depth = 1e10;
+    for (int i = 0; i < 9; i++)
+    {
+        float2 offsetUV = depthUV + offsets[i] * texelSize / 2.0;
+        float sampledDepth = _UnityDepthTexture.SampleLevel(sampler_UnityDepthTexture, offsetUV, 0);
+        depth = min(depth, sampledDepth);
+    }
+    float sampledDepth = _UnityDepthTexture.SampleLevel(sampler_UnityDepthTexture, depthUV, 0);
+    return LinearEyeDepth(depth);
+}
+
+// g = 0 causes uniform scattering while g = 1 causes directional scattering, in the direction of the photons
+float henyeyGreenstein(float angle, float g)
+{
+ 	float g2 = g * g;
+ 	return (1 - g2) / (4 * 3.1415 * pow(1 + g2 - 2 * g * (angle), 1.5));
+}
+
+// Amplifies brightness when the ray is directed towards the sun
+// https://fr.wikipedia.org/wiki/Fonction_de_phase_de_Henyey-Greenstein
+float phaseHG(float3 rayDir, float3 lightDir)
+{
+ 	float angleBottom = dot(rayDir, lightDir);
+ 	float angleTop = dot(lightDir, rayDir);
+ 	float hgBottom = henyeyGreenstein(angleBottom, _DirectionalScattering);
+ 	float hgTop = henyeyGreenstein(angleTop, _DirectionalScattering);
+    float hg = max(hgBottom, hgTop);
+ 	return 0.9 + hg;
+}
+
+// Not used for now
+float phaseMie(float3 rayDir, float3 lightDir)
+{
+    float cosTheta = dot(rayDir, lightDir);
+    float mieG = _DirectionalScattering; // Asymmetry parameter
+    float phaseMie = (1.0 + mieG*mieG - 2.0*mieG*cosTheta) /
+                    pow(1.0 + mieG*mieG - 2.0*mieG*cosTheta, 1.5);
+    return phaseMie;
+}
+
+float increaseStepSize(float stepSize, float dstFromCamera)
+{
+    return stepSize * (1 + dstFromCamera / 20000.0);
+}
+
+cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightParams, s_rayMarchParams rayParams, s_cloudParams cloudParams, s_erosionParams erosionParams, rayBoxInfo cloudsBoxInfo, rayBoxInfo fogBoxInfo, float depthDist = 1e10, float offset = 0)
+{
+    // Find the exact distance where fog reaches a threshold
+    // Fog equation : density * distance * distance > threshold
+    // Solving for distance, assuming it is always positive : distance > sqrt(threshold / density);
+    // This operation is useful to advance the ray exactly where the fog appears, skipping big areas and improving performance
+    float fogThreshold = 0.00001;
+    float fogStart = sqrt(fogThreshold / _FogDensity);
+    
+    // Assume fog box is bigger than cloud box
+    float dstTravelled = fogBoxInfo.dstToBox + 0.1 + offset; // + 0.1 to make sure the ray is inside the box
+    
+    // Skip steps before fog appears
+    dstTravelled += min(fogStart, cloudsBoxInfo.dstToBox - fogBoxInfo.dstToBox + 0.1); // + 0.1 to make sure we ray is inside the box
+
+    cloudMarchResult res;
+    res.transmittance = 1;
+    res.lightEnergy = 0;
+
+    float3 currentPos = rayPos + rayDir * dstTravelled;
+
+    float sdfValue = 0.1;
+ 	float phaseVal = phaseHG(normalize(rayDir), normalize(-lightParams.lightDir)); // TODO: fix phaseHG
+
+    int steps = 0;
+
+    bool insideCloud = false;
+    float stepSize = _CloudMinStepSize;
+
+    float density = 0;
+    float lightTransmittance;
+
+    // Problem: Algorithm almost always reaches maximum steps
+    // Optimization :(DONE) define a fog bounding box and use it to start / stop ray marching
+    // Optimization :(DONE) skip useless steps until fog appears
+    // Optimization :(DONE) increase minimum step size with distance ?
+    [loop]
+    while (dstTravelled < depthDist && dstTravelled < (fogBoxInfo.dstToBox + fogBoxInfo.dstInsideBox) && steps < _CloudMaxSteps && res.transmittance >= 0.01)
+    {
+        bool is_inside_clouds_box = isInBox_bounds(currentPos, _CloudsBoundsMin, _CloudsBoundsMax);
+        density = 0;
+
+        // Project point on box and check value
+        cloudShadowingResult shadowRes = getCloudShadowing(currentPos, lightParams.lightDir, _CloudsBoundsMin, _CloudsBoundsMax, _TransmittanceMap, sampler_TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage, false, _CustomTime);
+
+        float dstToGeometry = depthDist - dstTravelled;
+        float dstToCloudsBoxEdge;
+        float3 scaledRayDir = rayDir;
+        
+        // If ray is in the box
+        if (is_inside_clouds_box)
+        {
+            dstToCloudsBoxEdge = (cloudsBoxInfo.dstToBox + cloudsBoxInfo.dstInsideBox) - dstTravelled;
+        }
+        // If ray can collide with the box
+        else if (cloudsBoxInfo.dstInsideBox > 0)
+        {
+            // If the ray already got in and out of the box
+            if (dstTravelled > cloudsBoxInfo.dstToBox) // No need to check for !is_inside_clouds_box, as it is checked in previous "if".
+            {
+                dstToCloudsBoxEdge = 1e10;
+            }
+            // If ray did not reach the box yet
+            else
+            {
+                dstToCloudsBoxEdge = cloudsBoxInfo.dstToBox - dstTravelled;
+            }
+        }
+        // If ray never reaches the box
+        else
+        {
+            dstToCloudsBoxEdge = 1e10;
+        }
+        float maxStepSize = max(min(dstToCloudsBoxEdge + 0.1, dstToGeometry), _CloudMinStepSize); // + 0.1 to make sure we ray is beyond the edge
+        
+        // Use SDF and sample clouds when inside volume
+        if (is_inside_clouds_box)
+        {
+            sdfValue = sampleSDF(currentPos, rayParams, cloudParams, _CustomTime);
+
+            // Check if inside cloud (or near erosion)
+            insideCloud = sdfValue <= rayParams.sdfThreshold + _ErosionWorldScale;
+
+            // SDF-based step size with a minimum
+            stepSize = sdfValue; 
+            float minStepSize = increaseStepSize(_CloudMinStepSize, dstTravelled);
+
+            // Negative sdf value means we are inside the volume
+            if (_UseSDFInsideClouds)
+            {
+                // USING NEGATIVE VALUES CAN CAUSE ARTEFACTS AND BAD LIGHTING
+                stepSize = max(abs(stepSize), minStepSize);
+            }
+            else
+            {
+                stepSize = max(stepSize, minStepSize);
+            }
+            stepSize = min(stepSize, maxStepSize);
+            
+            // Add density when inside cloud
+            if (insideCloud)
+            {
+                // Only erode edges to improve performance
+                erosionParams.erode = erosionParams.erode && abs(sdfValue) <= _ErosionWorldScale * 2;
+                density = sampleDensity(currentPos, cloudParams, erosionParams, rayParams, _CustomTime) * stepSize;
+            }
+            
+            // Normalize ray dir when sampling SDF to make accurate progress
+            scaledRayDir = normalize(rayDir);
+        }
+        else
+        {
+            // Set fixed step size outside SDF
+            stepSize = min(_FogStepSize, maxStepSize);
+        }
+        
+        // Sample transmittance at current pos
+        float lightTransmittance = shadowRes.shadowing;
+        
+        // Add fog
+        float fogDistTravelled = dstTravelled - fogBoxInfo.dstToBox - _FogDistance;
+        float fogDensity = _FogDensity * stepSize * pow(max(fogDistTravelled, 0), 2);
+
+        // Apply light and density
+        res.lightEnergy += (fogDensity + density) * res.transmittance * lightTransmittance;
+        res.transmittance *= beer(fogDensity + density);
+        
+        if (res.transmittance < 0.05)
+        {
+            res.transmittance = 0;
+            break;
+        }
+        float dstFromOrigin = distance(currentPos.xz, rayPos.xz);
+        if (dstFromOrigin > _RenderDistance)
+        {
+            break;
+        }
+        
+        // Advance ray
+        dstTravelled += stepSize;
+        currentPos += scaledRayDir * stepSize;
+        steps++;
+    }
+
+    res.complexity = steps;
+    res.lightEnergy *= phaseVal;
+    return res;
+}
+
+float3 computeRayDir(float2 uv)
+{    
+    float3 direction = mul(_InvProjectionMatrix, float4(uv, 0.0f, 1.0f)).xyz;
+    direction = mul(_InvViewMatrix, float4(direction, 0.0f)).xyz;
+    return normalize(direction);
+}
+
+float getOffset(float2 uv)
+{
+    uint2 coord = uint2(uv * 1024.0f);
+    
+    // Simple white noise, should use texture for efficiency
+    uint n = (coord.x * 1619u) + (coord.y * 31337u);
+    n = (n << 13u) ^ n;
+    n = n * (n * n * 15731u + 789221u) + 1376312589u;
+    
+    return float(n) / 4294967295.0;
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / (float2) _OutputResolution.xy * 2.0f - 1.0f);
+    
+    float depthDist = computeUnityDepth(id);
+    float3 rayPos = _CameraPos;
+    float3 rayDir = computeRayDir(uv);
+    float offset = getOffset(uv + float2(1, 1)) * _OffsetNoiseIntensity;
+
+    // Calculate dist inside boxes
+    rayBoxInfo cloudsBoxInfo = rayBoxDst(rayPos, rayDir, _CloudsBoundsMin, _CloudsBoundsMax);
+    rayBoxInfo fogBoxInfo = rayBoxDst(rayPos, rayDir, _FogBoundsMin, _FogBoundsMax);
+
+    // Initialize structures
+    s_lightParams lightParams;
+    lightParams.lightDir = _LightDir;
+    lightParams.sunLightAbsorption = _SunLightAbsorption;
+    lightParams.usePowderEffect = _UsePowderEffect;
+    lightParams.powderIntensity = _PowderIntensity;
+    lightParams.powderBrightness = _PowderBrightness;
+
+    s_rayMarchParams rayParams; 
+    rayParams.SDF = _ShapeSDF;
+    rayParams.sampler_SDF = sampler_ShapeSDF;
+    rayParams.sdfSize = _ShapeSDFSize;
+    rayParams.sdfThreshold = _ThresholdSDF;
+    rayParams.minStepSize = _CloudMinStepSize;
+    rayParams.offset = offset;
+
+    s_cloudParams cloudParams;
+    cloudParams.boundsMin = _CloudsBoundsMin;
+    cloudParams.boundsMax = _CloudsBoundsMax;
+    cloudParams.cloudsScale = _SDFTextureScale;
+    cloudParams.globalDensity = _GlobalDensity;
+
+    s_erosionParams erosionParams;
+    erosionParams.erosion = _Erosion;
+    erosionParams.sampler_erosion = sampler_Erosion;
+    erosionParams.intensity = _ErosionIntensity;
+    erosionParams.worldScale = _ErosionWorldScale;
+    erosionParams.textureScale = _ErosionTextureScale;
+    erosionParams.speed = _ErosionSpeed;
+    erosionParams.erode = _UseErosion;
+
+    // Perform cloud marching
+    cloudMarchResult res = cloudMarch(rayPos, rayDir, lightParams, rayParams, cloudParams, erosionParams, cloudsBoxInfo, fogBoxInfo, depthDist, rayParams.offset);
+    _Output[id.xy] = float2(res.transmittance, res.lightEnergy);
+}
