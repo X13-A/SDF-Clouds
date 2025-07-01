@@ -27,6 +27,7 @@ A complete tooling scene is provided at `Examples/Tooling` with a pre-configured
 | `Attenuate Vertically` | Boolean    | Enable vertical gradient                    |
 | `Top Exponent`         | Float      | Top gradient falloff                        |
 | `Bottom Exponent`      | Float      | Bottom gradient falloff                     |
+
 Exemple of a generated texture:
 
 ![Cloudscape generated with 3D Worley noise](Images/WorleyNoise.png)
