@@ -5,7 +5,7 @@
 To create custom cloudscapes, you need to generate an SDF texture from a volume. This can be accomplished through two primary methods:
 1. Using the built-in noise generator
 2. Importing a custom volume from MagicaVoxel
-#### Built-in Noise Generator
+### Built-in Noise Generator
 A complete tooling scene is provided at `Examples/Tooling` with a pre-configured noise generation setup.
 
 **Usage:**
@@ -27,6 +27,7 @@ A complete tooling scene is provided at `Examples/Tooling` with a pre-configured
 | `Attenuate Vertically` | Boolean    | Enable vertical gradient                    |
 | `Top Exponent`         | Float      | Top gradient falloff                        |
 | `Bottom Exponent`      | Float      | Bottom gradient falloff                     |
+
 Exemple of a generated texture:
 
 ![Cloudscape generated with 3D Worley noise](Images/WorleyNoise.png)
@@ -34,7 +35,7 @@ Exemple of a generated texture:
 >**Note**: Export the generated noise as a .qb file, convert it to .vox format, then import into MagicaVoxel for manual refinement. 
 
 >This tool converts .qb files to .vox: https://drububu.com/miscellaneous/voxelizer/?out=vox
-#### MagicaVoxel Import
+### MagicaVoxel Import
 
 You can create volumes using MagicaVoxel and import them as .qb files.
 

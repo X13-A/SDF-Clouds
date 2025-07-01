@@ -36,7 +36,7 @@ This component computes and stores volumetric lighting data in a 3D texture (als
 
 Below is a visual example using a low-resolution map:
 
-![Inspector](Images/Inspector%20-%20TransmittanceMap.png)
+![Inspector](Images/Inspector%20TransmittanceMap.png)
 
 #### Configuration
 
