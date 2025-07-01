@@ -48,8 +48,10 @@ Shader"Custom/Volumetrics/CloudsShader"
             float3 _BoundsMax;
 
             // Shadows
+            int _EnableShadows;
+            int _SoftShadows;
             float3 _ShadowColor;
-            float _ShadowingOffset;
+            float _ShadowMultiplier;
 
             // Transmittance map
             sampler3D _TransmittanceMap;
@@ -93,11 +95,17 @@ Shader"Custom/Volumetrics/CloudsShader"
                 float depthDist = LinearEyeDepth(depth) * viewLength;
 
                 float3 worldPos = rayPos + rayDir * depthDist;
-                cloudShadowingResult shadowingRes = getCloudShadowing(worldPos, lightDir, _BoundsMin, _BoundsMax, _TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage, true, _CustomTime);
-                float shadowing = shadowingRes.shadowing;
-                shadowing += _ShadowingOffset;
-                shadowing = clamp(shadowing, 0.2, 1.0);
-                shadowing = pow(shadowing, 5);
+
+                float shadowing = 1;
+                if (_EnableShadows)
+                {
+                    cloudShadowingResult shadowingRes = getCloudShadowing(worldPos, lightDir, _BoundsMin, _BoundsMax, _TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage, _SoftShadows, _CustomTime);
+                    shadowing = 1 - saturate(shadowingRes.shadowing);
+                    shadowing *= _ShadowMultiplier;
+                    shadowing = 1 - saturate(shadowing);
+                    shadowing = clamp(shadowing, 0.2, 1.0);
+                    shadowing = pow(shadowing, 1);
+                }
 
                 fixed4 backgroundColor = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex, i.uv);
                 fixed2 read = tex2D(_CloudsRayMarchTexture, i.uv);

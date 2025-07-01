@@ -205,8 +205,8 @@ float sampleDensity(float3 pos, s_cloudParams cloudParams, s_erosionParams erosi
     
     float dstInsideCloud = abs(sdfValue) - rayParams.sdfThreshold;
 
-    float cloudDensity = dstInsideCloud * cloudParams.globalDensity / 500.0;
-
+    float cloudDensity = min(dstInsideCloud / 500.0, 1) * cloudParams.globalDensity;
+    
     if (erosionParams.erode)
     {
 
@@ -223,7 +223,7 @@ float sampleDensity(float3 pos, s_cloudParams cloudParams, s_erosionParams erosi
         float detailErodeWeight = pow(oneMinusShape, 16);
 
         // Subtract weighted detail noise from base shape density
-        float finalDetail = highDetail * detailErodeWeight;
+        float finalDetail = highDetail * saturate(detailErodeWeight);
 
         float finalDensity = saturate(lowDetail - finalDetail);
 

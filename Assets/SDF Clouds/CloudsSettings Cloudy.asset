@@ -19,28 +19,35 @@ MonoBehaviour:
   cloudsScale: {x: 400000, y: 4000, z: 400000}
   fogPosition: {x: 0, y: 3500, z: 0}
   fogScale: {x: 400000, y: 7000, z: 400000}
-  sdfTexture: {fileID: 11700000, guid: f0827a6182a1e5f42a48d90defc14621, type: 2}
+  sdfTexture: {fileID: 11700000, guid: bd853ec2cfba75c499e90d8805c1b686, type: 2}
   sdfTextureScale: {x: 30000, y: 4000, z: 30000}
-  sdfTextureOffset: {x: 0, y: 0, z: 0}
-  globalDensity: 0.03
-  useErosion: 1
+  globalDensity: 0.02
+  useErosion_shape: 1
+  useErosion_AO: 1
+  useErosion_sunLight: 1
   erosionTexture: {fileID: 11700000, guid: 02fef1382c4f5bf4e9b59665fb157258, type: 2}
   erosionTextureScale: 2000
   erosionWorldScale: 750
   erosionIntensity: 1
   erosionSpeed: {x: 5, y: -15, z: 5}
-  sunlightAbsorption: 0.013
-  lightMultiplier: 0.6
-  directionalScattering: 0.75
-  shadowColor: {r: 0.16019939, g: 0.21804287, b: 0.754717, a: 1}
-  shadowingOffset: 0.2
-  fogDensity: 0.2
+  useSunLight: 1
+  sunlightAbsorption: 0.01
+  lightMultiplier: 1
+  directionalScattering: 0.9
+  useAO: 1
+  AO_Offset: 500
+  AO_Intensity: 35
+  enableShadows: 1
+  softShadows: 0
+  shadowColor: {r: 0.14391243, g: 0.19778335, b: 0.6933962, a: 1}
+  shadowMultiplier: 0.6
+  fogDensity: 0.1
   fogDistance: 0
   renderScale: 1
   renderDistance: 500000
   cloudMaxSteps: 500
   cloudMinStepSize: 25
-  fogStepSize: 500
-  offsetNoiseIntensity: 250
+  fogStepSize: 250
+  offsetNoiseIntensity: 75
   useSDFInsideClouds: 0
   sdfThreshold: 0

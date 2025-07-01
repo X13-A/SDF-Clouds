@@ -17,11 +17,13 @@ public class CloudsSettings : ScriptableObject
     [Header("Shape")]
     public Texture3D sdfTexture;
     public Vector3 sdfTextureScale = Vector3.one;
-    public Vector3 sdfTextureOffset = Vector3.zero;
     [Range(0, 5)] public float globalDensity = 0.25f;
 
     [Header("Erosion")]
-    public bool useErosion;
+    public bool useErosion_shape;
+    public bool useErosion_AO = true;
+    public bool useErosion_sunLight = false;
+
     public Texture3D erosionTexture;
     [Range(0, 10000)] public float erosionTextureScale;
     [Range(0, 10000)] public float erosionWorldScale;
@@ -29,13 +31,21 @@ public class CloudsSettings : ScriptableObject
     public Vector3 erosionSpeed;
 
     [Header("Lighting")]
+    public bool useSunLight = true;
     [Range(0, 1)] public float sunlightAbsorption = 0.25f;
     [Range(0, 2)] public float lightMultiplier = 1.0f;
     [Range(0, 1)] public float directionalScattering = 0.5f;
 
-    [Header("Shadow Parameters")]
+    [Header("Ambient Occlusion")]
+    public bool useAO = true;
+    public float AO_Offset = 500;
+    public float AO_Intensity = 35;
+
+    [Header("Shadows")]
+    public bool enableShadows = true;
+    public bool softShadows = true;
     public Color shadowColor;
-    [Range(0, 10)] public float shadowingOffset;
+    [Range(0, 10)] public float shadowMultiplier;
 
     [Header("Fog")]
     [Range(0, 10.0f)] public float fogDensity = 0.01f;

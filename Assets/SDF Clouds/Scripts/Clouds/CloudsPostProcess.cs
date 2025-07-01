@@ -124,7 +124,6 @@ public class CloudsPostProcess : PostProcessBase
         computeShader.SetFloats("_FogBoundsMax", new float[] { cloudSettings.FogBoundsMax.x, cloudSettings.FogBoundsMax.y, cloudSettings.FogBoundsMax.z });
 
         computeShader.SetFloats("_SDFTextureScale", new float[] { cloudSettings.sdfTextureScale.x, cloudSettings.sdfTextureScale.y, cloudSettings.sdfTextureScale.z });
-        computeShader.SetFloats("_SDFTextureOffset", new float[] { cloudSettings.sdfTextureOffset.x, cloudSettings.sdfTextureOffset.y, cloudSettings.sdfTextureOffset.z });
         computeShader.SetFloat("_GlobalDensity", cloudSettings.globalDensity);
 
         // Sampling
@@ -140,7 +139,7 @@ public class CloudsPostProcess : PostProcessBase
         computeShader.SetFloat("_ErosionIntensity", cloudSettings.erosionIntensity);
         computeShader.SetFloat("_ErosionTextureScale", cloudSettings.erosionTextureScale);
         computeShader.SetFloat("_ErosionWorldScale", cloudSettings.erosionWorldScale);
-        computeShader.SetInt("_UseErosion", cloudSettings.useErosion ? 1 : 0);
+        computeShader.SetInt("_UseErosion", cloudSettings.useErosion_shape ? 1 : 0);
         computeShader.SetFloats("_ErosionSpeed", new float[] { cloudSettings.erosionSpeed.x, cloudSettings.erosionSpeed.y, cloudSettings.erosionSpeed.z });
 
         // Lighting
@@ -179,9 +178,10 @@ public class CloudsPostProcess : PostProcessBase
         cloudSettings.postProcessMaterial.SetFloat("_LightMultiplier", cloudSettings.lightMultiplier);
 
         // Shadows
+        cloudSettings.postProcessMaterial.SetInt("_EnableShadows", cloudSettings.enableShadows ? 1 : 0);
+        cloudSettings.postProcessMaterial.SetInt("_SoftShadows", cloudSettings.softShadows ? 1 : 0);
         cloudSettings.postProcessMaterial.SetVector("_ShadowColor", cloudSettings.shadowColor);
-        cloudSettings.postProcessMaterial.SetFloat("_ShadowingOffset", cloudSettings.shadowingOffset);
-
+        cloudSettings.postProcessMaterial.SetFloat("_ShadowMultiplier", cloudSettings.shadowMultiplier);
         cloudSettings.postProcessMaterial.SetFloat("_CustomTime", Time.time);
     }
 
@@ -204,7 +204,6 @@ public class CloudsPostProcess : PostProcessBase
         screenHeight = source.height;
         lastRenderScale = cloudSettings.renderScale;
         deviceActive = XRSettings.isDeviceActive;
-
 
         // Update render texture
         bool valid = true;

@@ -21,22 +21,27 @@ MonoBehaviour:
   fogScale: {x: 400000, y: 5750, z: 400000}
   sdfTexture: {fileID: 11700000, guid: f0827a6182a1e5f42a48d90defc14621, type: 2}
   sdfTextureScale: {x: 25000, y: 3000, z: 15000}
-  sdfTextureOffset: {x: 0, y: 0, z: 0}
   globalDensity: 0.03
-  useErosion: 1
+  useErosion_shape: 1
+  useErosion_AO: 1
+  useErosion_sunLight: 1
   erosionTexture: {fileID: 11700000, guid: 02fef1382c4f5bf4e9b59665fb157258, type: 2}
   erosionTextureScale: 1000
   erosionWorldScale: 375
   erosionIntensity: 1
   erosionSpeed: {x: 5, y: -15, z: 5}
+  useSunLight: 1
   sunlightAbsorption: 0.017
   lightMultiplier: 0.6
   directionalScattering: 0.75
-  lightShaftMultiplier: 0
+  useAO: 1
+  AO_Offset: 500
+  AO_Intensity: 35
+  enableShadows: 1
+  softShadows: 1
   shadowColor: {r: 0.16019939, g: 0.21804287, b: 0.754717, a: 1}
-  shadowingOffset: 0.2
+  shadowMultiplier: 0
   fogDensity: 0.2
-  fogAbsorption: 0
   fogDistance: 0
   renderScale: 1
   renderDistance: 500000

@@ -26,6 +26,7 @@ float _ThresholdSDF;
 // Lighting
 float _LightMinStepSize;
 float _SunLightAbsorption;
+bool _UseSun;
 
 // Powder effect
 float _PowderBrightness;
@@ -35,12 +36,18 @@ bool _UsePowderEffect;
 // Erosion
 Texture3D<float> _Erosion;
 SamplerState sampler_Erosion;
-bool _UseErosion;
+bool _UseErosion_sun;
+bool _UseErosion_AO;
 
 float _ErosionTextureScale;
 float _ErosionWorldScale;
 float3 _ErosionSpeed;
 float _ErosionIntensity;
+
+// AO
+bool _UseAO;
+float _AOintensity;
+float _AOoffset;
 
 // Others
 float _CustomTime;
@@ -76,11 +83,60 @@ bool isInMap(int3 mapID)
     return true;
 }
 
+float calculateAO(uint3 currentID, s_rayMarchParams rayParams, s_cloudParams cloudParams, s_erosionParams erosionParams)
+{
+    float totalOcclusion = 0.0;
+    int validSamples = 0;
+    float3 currentPos = idToWorldSpace(currentID) + _StartPos;
+    
+    // Sample all neighbors
+    int samplesPerSide = 3;
+    float offset = _AOoffset / samplesPerSide;
+    
+    for (int x = -samplesPerSide; x <= samplesPerSide; x++)
+    {
+        for (int y = -samplesPerSide; y <= samplesPerSide; y++)
+        {
+            for (int z = -samplesPerSide; z <= samplesPerSide; z++)
+            {
+                // Skip center voxel
+                if (x == 0 && y == 0 && z == 0)
+                {
+                    continue;
+                }
+                
+                float3 neighbor = currentPos + float3(x, y, z) * offset;
+                float neighborDensity = 0;
+                
+                // Check if sample is valid
+                if (isInBox_bounds(neighbor, _BoundsMin, _BoundsMax, false, true, false))
+                {
+                    neighborDensity = sampleDensity(neighbor, cloudParams, erosionParams, rayParams, _CustomTime);
+                }
+                
+                totalOcclusion += neighborDensity;
+                validSamples++;
+            }
+        }
+    }
+    
+    if (validSamples == 0)
+    {
+        return 1.0;
+    }
+    
+    // Calculate average occlusion
+    float avgOcclusion = totalOcclusion / (float) validSamples;
+    
+    // Convert to AO factor (higher density = more occlusion = darker)
+    float aoFactor = 1.0 - saturate(avgOcclusion * _AOintensity);
+    
+    return aoFactor;
+}
+
 [numthreads(8,8,8)]
 void CSMain (uint3 id : SV_DispatchThreadID) 
 {
-    float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / (float2) _TransmittanceMapResolution.xz * 2.0f - 1.0f);
-
     // Convert thread ID to world space
     float3 worldSpacePos = idToWorldSpace(id);
     float3 startPos = _StartPos + worldSpacePos;
@@ -110,7 +166,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     erosionParams.worldScale = _ErosionWorldScale;
     erosionParams.textureScale = _ErosionTextureScale;
     erosionParams.speed = _ErosionSpeed;
-    erosionParams.erode = _UseErosion;
+    erosionParams.erode = _UseErosion_sun;
 
     // Initialize s_cloudParams struct
     s_cloudParams cloudParams;
@@ -123,8 +179,27 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     // Call the lightMarch_sdf function
     s_lightMarchResult res_sun = lightMarch_sdf(startPos, rayParams, cloudParams, erosionParams, lightParams, _CustomTime);
     
+    // Calculate Ambiant occlusion
+    float aoFactor = 1;
+    if (_UseAO)
+    {
+        erosionParams.erode = _UseErosion_AO;
+        aoFactor = calculateAO(id, rayParams, cloudParams, erosionParams);
+    }
+    
     // Store the result in the output texture
-    _TransmittanceMap[id] = res_sun.transmittance;
+    _TransmittanceMap[id] = 1;
+    
+    if (_UseAO)
+    {
+        _TransmittanceMap[id] -= pow(1 - aoFactor, 2);
+        //_TransmittanceMap[id] -= 1 - pow(aoFactor, 2);
+    }
+    if (_UseSun)
+    {
+        _TransmittanceMap[id] *= res_sun.transmittance;    
+    }
+
     
     if (_UsePointLight)
     {

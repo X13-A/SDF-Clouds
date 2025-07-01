@@ -13,11 +13,10 @@ public class TransmittanceMap : MonoBehaviour
     
     [Header("Quality params")]
     [SerializeField] private float lightMinStepSize;
-    [SerializeField] private int textureWidth = 1920;
-    [SerializeField] private int textureHeight = 1920;
-    [SerializeField] private int textureDepth= 1920;
-    [SerializeField] private bool useErosion = false;
-
+    [SerializeField] private int textureWidth = 512;
+    [SerializeField] private int textureHeight = 64;
+    [SerializeField] private int textureDepth= 512;
+    
     private float mapWidth => clouds.cloudSettings.sdfTextureScale.x;
     private float mapHeight => clouds.cloudSettings.cloudsScale.y;
     private float mapDepth => clouds.cloudSettings.sdfTextureScale.z;
@@ -51,7 +50,6 @@ public class TransmittanceMap : MonoBehaviour
         Setup();
     }
 
-
     private void Setup()
     {
         if (clouds == null) return;
@@ -67,6 +65,7 @@ public class TransmittanceMap : MonoBehaviour
         MapRenderTexture.enableRandomWrite = true;
         MapRenderTexture.filterMode = FilterMode.Bilinear;
         MapRenderTexture.wrapMode = TextureWrapMode.Repeat;
+        MapRenderTexture.wrapModeV = TextureWrapMode.Clamp;
         MapRenderTexture.Create();
     }
 
@@ -96,6 +95,7 @@ public class TransmittanceMap : MonoBehaviour
         // Lighting
         mapCompute.SetFloat("_LightMinStepSize", lightMinStepSize);
         mapCompute.SetFloat("_SunLightAbsorption", clouds.cloudSettings.sunlightAbsorption);
+        mapCompute.SetBool("_UseSun", clouds.cloudSettings.useSunLight);
 
         // Erosion
         mapCompute.SetTexture(mapKernel, "_Erosion", clouds.cloudSettings.erosionTexture);
@@ -103,12 +103,18 @@ public class TransmittanceMap : MonoBehaviour
         mapCompute.SetFloat("_ErosionWorldScale", clouds.cloudSettings.erosionWorldScale);
         mapCompute.SetFloats("_ErosionSpeed", new float[] { clouds.cloudSettings.erosionSpeed.x, clouds.cloudSettings.erosionSpeed.y, clouds.cloudSettings.erosionSpeed.z });
         mapCompute.SetFloat("_ErosionIntensity", clouds.cloudSettings.erosionIntensity);
-        mapCompute.SetBool("_UseErosion", useErosion);
+        mapCompute.SetBool("_UseErosion_sun", clouds.cloudSettings.useErosion_sunLight);
+        mapCompute.SetBool("_UseErosion_AO", clouds.cloudSettings.useErosion_AO);
 
         // Position & size
         mapCompute.SetFloats("_StartPos", new float[] { clouds.CloudsContainerCenter.x, clouds.CloudsContainerCenter.y, clouds.CloudsContainerCenter.z });
         mapCompute.SetFloats("_TransmittanceMapCoverage", new float[] { mapWidth, mapHeight, mapDepth });
         mapCompute.SetInts("_TransmittanceMapResolution", new int[] { textureWidth, textureHeight, TextureDepth });
+
+        // AO
+        mapCompute.SetBool("_UseAO", clouds.cloudSettings.useAO);
+        mapCompute.SetFloat("_AOoffset", clouds.cloudSettings.AO_Offset);
+        mapCompute.SetFloat("_AOintensity", clouds.cloudSettings.AO_Intensity);
 
         // Dev: point light
         if (pointLight != null)

@@ -11,6 +11,10 @@ public class VolumeToSDFConverter : MonoBehaviour
 {
     public ComputeShader sdfComputeShader;
     public Texture3D volumeTexture;
+    // The search radius for the minimum distance of each texel
+    // A higher value could lead to faster ray-marching during SDF traversal
+    // Reduce this if there is a GPU timeout during calculation
+    public int searchRadius = 15;
     public bool compute;
     public string outputPath;
 
@@ -37,6 +41,7 @@ public class VolumeToSDFConverter : MonoBehaviour
         sdfComputeShader.SetTexture(kernelHandle, "_VolumeTexture", volumeTexture);
         sdfComputeShader.SetTexture(kernelHandle, "_SDFTexture", sdfTexture);
         sdfComputeShader.SetInts("_TextureSize", width, height, depth);
+        sdfComputeShader.SetInt("_SearchRadius", searchRadius);
 
         // Dispatch the compute shader in chunks
         int threadGroupsX = Mathf.CeilToInt(chunkSize / 8.0f);

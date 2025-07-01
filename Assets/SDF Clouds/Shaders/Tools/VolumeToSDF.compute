@@ -13,8 +13,7 @@ int3 _TextureSize;
 int3 _ChunkOffset;
 int3 _ChunkSize;
 
-
-#define MAX_RADIUS 20 // Maximum search radius
+int _SearchRadius;
 
 float sampleVolumeTexture(int3 pos)
 {
@@ -34,20 +33,20 @@ bool isInsideVolume(float value)
 float calculateDistance(int3 pos)
 {
     float3 fPos = float3(pos);
-    float minDistance = float(MAX_RADIUS); // Initialize with the max search radius
+    float minDistance = float(_SearchRadius); // Initialize with the max search radius
     bool insideVolume = isInsideVolume(sampleVolumeTexture(pos)); // Check if the current position is inside the volume
 
-    // Iterate over a cube of size (2 * MAX_RADIUS + 1)
-    for (int z = -MAX_RADIUS; z <= MAX_RADIUS; z++)
+    // Iterate over a cube of size (2 * _SearchRadius + 1)
+    for (int z = -_SearchRadius; z <= _SearchRadius; z++)
     {
-        for (int y = -MAX_RADIUS; y <= MAX_RADIUS; y++)
+        for (int y = -_SearchRadius; y <= _SearchRadius; y++)
         {
-            for (int x = -MAX_RADIUS; x <= MAX_RADIUS; x++)
+            for (int x = -_SearchRadius; x <= _SearchRadius; x++)
             {
                 int3 offset = int3(x, y, z);
 
                 // Skip voxels that are outside the sphere
-                if (length(float3(offset)) > MAX_RADIUS)
+                if (length(float3(offset)) > _SearchRadius)
                     continue;
 
                 int3 samplePos = pos + offset;

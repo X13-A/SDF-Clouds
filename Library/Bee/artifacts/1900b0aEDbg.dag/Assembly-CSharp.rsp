@@ -318,8 +318,8 @@
 -r:"C:/Program Files/Unity/Hub/Editor/2021.3.45f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.XPath.XDocument.dll"
 -r:"C:/Program Files/Unity/Hub/Editor/2021.3.45f1/Editor/Data/NetStandard/Extensions/2.0.0/System.Runtime.InteropServices.WindowsRuntime.dll"
 -r:"C:/Program Files/Unity/Hub/Editor/2021.3.45f1/Editor/Data/NetStandard/ref/2.1.0/netstandard.dll"
--r:"C:/Users/Alex/source/unversioned/SDF-Clouds/Library/PackageCache/com.unity.testtools.codecoverage@1.2.6/lib/ReportGenerator/ReportGeneratorMerged.dll"
--r:"C:/Users/Alex/source/unversioned/SDF-Clouds/Library/PackageCache/com.unity.visualscripting@1.9.4/Runtime/VisualScripting.Flow/Dependencies/NCalc/Unity.VisualScripting.Antlr3.Runtime.dll"
+-r:"C:/Users/Alex/source/repos/SDF-Clouds/Library/PackageCache/com.unity.testtools.codecoverage@1.2.6/lib/ReportGenerator/ReportGeneratorMerged.dll"
+-r:"C:/Users/Alex/source/repos/SDF-Clouds/Library/PackageCache/com.unity.visualscripting@1.9.4/Runtime/VisualScripting.Flow/Dependencies/NCalc/Unity.VisualScripting.Antlr3.Runtime.dll"
 -r:"Library/Bee/artifacts/1900b0aEDbg.dag/Unity.EditorCoroutines.Editor.ref.dll"
 -r:"Library/Bee/artifacts/1900b0aEDbg.dag/Unity.Performance.Profile-Analyzer.Editor.ref.dll"
 -r:"Library/Bee/artifacts/1900b0aEDbg.dag/Unity.PlasticSCM.Editor.ref.dll"
@@ -349,10 +349,8 @@
 "Assets/SDF Clouds/Scripts/Pipeline/PostProcessBase.cs"
 "Assets/SDF Clouds/Scripts/Pipeline/PostProcessStack.cs"
 "Assets/SDF Clouds/Scripts/Pipeline/RenderingUtils.cs"
-"Assets/SDF Clouds/Scripts/Tools/Cloudscape Generator/CloudScapeConfig.cs"
-"Assets/SDF Clouds/Scripts/Tools/Cloudscape Generator/CloudScapeGenerator.cs"
-"Assets/SDF Clouds/Scripts/Tools/Noise3DGenerator.cs"
 "Assets/SDF Clouds/Scripts/Tools/VolumeToSDFConverter.cs"
+"Assets/SDF Clouds/Scripts/Tools/WorleyNoiseGenerator.cs"
 -langversion:9.0
 /deterministic
 /optimize-

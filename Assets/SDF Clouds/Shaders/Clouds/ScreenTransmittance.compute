@@ -59,7 +59,6 @@ int3 _ShapeSDFSize;
 float _ThresholdSDF;
 bool _UseSDFInsideClouds;
 float3 _SDFTextureScale;
-float3 _SDFTextureOffset; // NOT USED FOR NOW
 
 // Erosion
 Texture3D<float> _Erosion;
@@ -179,7 +178,7 @@ cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightPar
 
         // Project point on box and check value
         cloudShadowingResult shadowRes = getCloudShadowing(currentPos, lightParams.lightDir, _CloudsBoundsMin, _CloudsBoundsMax, _TransmittanceMap, sampler_TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage, false, _CustomTime);
-
+        
         float dstToGeometry = depthDist - dstTravelled;
         float dstToCloudsBoxEdge;
         float3 scaledRayDir = rayDir;

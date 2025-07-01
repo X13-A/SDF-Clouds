@@ -58,19 +58,16 @@
     <Analyzer Include="C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\SDF Clouds\Scripts\Tools\Cloudscape Generator\CloudScapeConfig.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Clouds\CloudsPostProcess.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Pipeline\PostProcessStack.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Clouds\TransmittanceMap.cs" />
-    <Compile Include="Assets\SDF Clouds\Scripts\Tools\Cloudscape Generator\CloudScapeGenerator.cs" />
-    <Compile Include="Assets\SDF Clouds\Scripts\Tools\Noise3DGenerator.cs" />
+    <Compile Include="Assets\SDF Clouds\Scripts\Tools\WorleyNoiseGenerator.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Pipeline\RenderingUtils.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Tools\VolumeToSDFConverter.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Clouds\CloudsSettings.cs" />
     <Compile Include="Assets\SDF Clouds\Scripts\Pipeline\PostProcessBase.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets\SDF Clouds\Scripts\Tools\Cloudscape Generator\GenerateCloudScape.compute" />
     <None Include="Assets\SDF Clouds\Shaders\Tools\ComputeWorley3D.compute" />
     <None Include="Assets\SDF Clouds\Shaders\Tools\DownscaleTexture.compute" />
     <None Include="Assets\SDF Clouds\Shaders\Clouds\TransmittanceMap3D.compute" />
