@@ -1,3 +1,5 @@
+# Cloud rendering configuration guide
+
 This guide explains all the parameters used to control the appearance, quality, and performance of the cloud rendering system.
 
 > For a successful setup, it’s recommended to duplicate a sample `CloudSettings` asset from the example folder and customize from there.

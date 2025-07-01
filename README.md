@@ -1,4 +1,5 @@
-SDF-Clouds is a rendering package for Unity that enables **fast, high-quality volumetric clouds and fog**.
+# SDF Clouds - Accelerated Volumetrics
+SDF Clouds is a rendering package for Unity that enables **fast, high-quality volumetric clouds and fog**.
 
 Cloud shapes are defined using a **3D Signed Distance Field (SDF)** stored in a voxel grid, giving you full creative control over the structure of your cloudscapes.
 

@@ -1,3 +1,5 @@
+# Quick start
+
 ## Example Scene Overview
 
 The package includes a sample scene to demonstrate a working cloud setup.  
