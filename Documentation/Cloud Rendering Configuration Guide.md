@@ -73,6 +73,7 @@ Clouds and fog are rendered inside a bounding box defined by the following:
 | `Clouds Scale`    | World size of the cloud container.     |
 | `Fog Position`    | World position of the fog container.   |
 | ``Fog Scale``     | World size of the fog container.       |
+
 **Important**: Clouds are only rendered inside the fog volume, so make sure the fog container is larger than the clouds container.
 
 ---
@@ -84,7 +85,8 @@ A **Signed Distance Field (SDF)** stored in a 3D texture defines the shape of th
 | ``SDF Texture``     | A reference to the SDF texture defining the cloudscape                             |
 | `SDF Texture Scale` | Defines the scale of one repetition of the 3D texture in world space.              |
 | `Global Density`    | Controls the base density of the cloud volume. Affects lighting and visual detail. |
-Effect of `Global Density` on lighting and detail:*
+
+Effect of `Global Density` on lighting and detail:
 
 ![Density](Images/Density.png)
 
@@ -118,13 +120,14 @@ Left: erosion off, right: erosion on:
 | `Sunlight Absorption`    | Controls how much sunlight is absorbed by cloud particles. Higher values darken clouds and increase visual contrast.             |
 | `Directional Scattering` | Controls how strongly light is scattered forward. Higher values make clouds appear brighter when viewed toward the light source. |
 | `Light Multiplier`       | Multiplies the directional light color. Useful if the directional light intensity is not 1.0.                                    |
-Example of different `Sunlight Absorption` value:
+
+Example of different `Sunlight Absorption` values:
 
 ![Absorption](Images/Absorption.png)
 
 Visual comparison of `Directional Scattering` off and on:
 
-![]()DirectionScatteringal 
+![Directional Scattering](Images/Directional%20Scattering.png) 
 
 Example: Light intensity of 1.25 compensated with a ``Light Multiplier`` of 0.6.
 
@@ -139,6 +142,7 @@ Ambient occlusion darkens regions where light is less likely to reach due to sur
 | ``Use AO``     | Toggles ambient occlusion                                                                                                   |
 | `AO_Offset`    | Distance used to sample neighboring positions for AO. Higher values highlight large shapes. Lower values show fine details. |
 | `AO_Intensity` | Multiplier for AO contribution. Higher values create darker, more defined shapes.                                           |
+
 Visual comparison with no AO (left), offset 500 (middle), offset 125 (right):
 
 ![OffsetAO](Images/AO%20Offset.png) 
@@ -187,6 +191,7 @@ Renders with different fog density:
 | `Cloud Max Steps`     | Maximum number of steps per ray. Lowering this can improve performance but may cause incomplete cloud rendering. |
 | `Cloud Min Step Size` | Minimum raymarching step size. Larger values increase speed but reduce detail.                                   |
 | `Fog Step Size`       | Raymarching step size for fog. Can be higher than cloud step size since fog has lower frequency detail.          |
+
 Aliasing caused by different render scales:
 
 ![Render scale](Images/Render%20scale.png) 
@@ -199,6 +204,7 @@ Raymarching uses 2D noise to offset ray start distances. This helps reduce alias
 | Parameter                | Description                                                                                                     |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `Offset Noise Intensity` | Intensity of the offset applied to ray origins. Higher values reduce aliasing but introduce screen-space noise. |
+
 Without vs. with noise offset:
 
 ![Offset noise](Images/Offset%20noise.png) 
