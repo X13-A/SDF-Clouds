@@ -43,7 +43,7 @@ Below is a visual example using a low-resolution map:
 | Property             | Description                                                                                                                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Map Updates**      | Lighting is computed once at initialization. Enable `Calculate Lighting Each Frame` to update it in real time.                                                                                                   |
-| **Map Resolution**   | Defines the voxel resolution of the transmittance texture. It should match the scale of your cloudscape. Higher resolutions improve quality but may reduce performance if updated each frame.                    |
+| **Map Resolution**   | Defines the voxel resolution of the transmittance texture. Higher resolutions improve quality but will reduce performance if updated each frame.                    |
 | **Lighting Quality** | Controls the minimum step size used by light rays during calculation. Lower values yield more accurate lighting but are slower to compute. If not updating in real time, a low value (e.g. `25`) is recommended. |
 
 ---

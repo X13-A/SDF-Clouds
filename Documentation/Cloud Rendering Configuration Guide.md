@@ -80,13 +80,13 @@ Clouds and fog are rendered inside a bounding box defined by the following:
 
 ---
 ### Shape
-A **Signed Distance Field (SDF)** stored in a 3D texture defines the shape of the cloudscape. It allows efficient raymarching and detail shaping.
+A **Signed Distance Field (SDF)** stored in a 3D texture defines the shape of the cloudscape. It allows efficient raymarching.
 
 | Parameter           | Description                                                                        |
 | ------------------- | ---------------------------------------------------------------------------------- |
 | ``SDF Texture``     | A reference to the SDF texture defining the cloudscape                             |
 | `SDF Texture Scale` | Defines the scale of one repetition of the 3D texture in world space.              |
-| `Global Density`    | Controls the base density of the cloud volume. Affects lighting and visual detail. |
+| `Global Density`    | Controls the base density of the cloud volume. |
 
 Effect of `Global Density` on lighting and detail:
 
@@ -103,14 +103,15 @@ Left: erosion off, right: erosion on:
 
 | Parameter               | Description                                             |
 | ----------------------- | ------------------------------------------------------- |
-| `Use Erosion_Shape`     | Enables erosion in the shape generation pass.           |
+| `Use Erosion_Shape`     | Enables erosion in the shape rendering pass.           |
 | `Use Erosion_AO`        | Applies erosion to ambient occlusion calculation.       |
 | `Use Erosion_SunLight`  | Applies erosion to sunlight shading.                    |
 | ``Erosion Texture``     | The 3D texture used to sample erosion                   |
 | `Erosion World Scale`   | Controls the world thickness of the erosion layer.      |
 | `Erosion Texture Scale` | Scales the erosion 3D texture in world space.           |
-| `Erosion Intensity`     | Controls the blend intensity of the erosion detail.     |
+| `Erosion Intensity`     | Controls the intensity of erosion detail.     |
 | `Erosion Speed`         | Offsets the erosion pattern over time to simulate wind. |
+
 > Use tileable textures to prevent visible seams. The included erosion texture is recommended.
 
 ---
@@ -137,13 +138,13 @@ Example: Light intensity of 1.25 compensated with a ``Light Multiplier`` of 0.6.
 
 ---
 ### Ambient Occlusion
-Ambient occlusion darkens regions where light is less likely to reach due to surrounding particles.
+Ambient occlusion darkens regions light is less likely to reach due to surrounding particles. It has a high impact of lighting computation time (not an issue for baked lighting).
 
 | Parameter      | Description                                                                                                                 |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | ``Use AO``     | Toggles ambient occlusion                                                                                                   |
 | `AO_Offset`    | Distance used to sample neighboring positions for AO. Higher values highlight large shapes. Lower values show fine details. |
-| `AO_Intensity` | Multiplier for AO contribution. Higher values create darker, more defined shapes.                                           |
+| `AO_Intensity` | Non-linear multiplier for AO contribution. |
 
 Visual comparison with no AO (left), offset 500 (middle), offset 125 (right):
 
@@ -167,7 +168,7 @@ Example of different shadow colors:
 
 ![Shadow Colors](Images/Shadow%20colors.png) 
 
-Example of different shadow intensities:
+Example of different shadow multipliers:
 
 ![Ground shadows](Images/Ground%20shadows.png) 
 
@@ -179,7 +180,7 @@ Example of different shadow intensities:
 | `Fog Density`  | Controls how dense the air particles are in the scene. |
 | `Fog Distance` | Sets how far from the camera fog starts to appear.     |
 
-Renders with different fog density:
+Renders with different fog densities:
 
 ![Fog](Images/Fog.png)
 
@@ -201,7 +202,7 @@ Aliasing caused by different render scales:
 ---
 ### Noise Settings
 
-Raymarching uses 2D noise to offset ray start distances. This helps reduce aliasing caused by discrete ray steps and blends shapes visually.
+Raymarching uses 2D noise to offset ray start distances. This helps reduce aliasing caused by discrete ray steps.
 
 | Parameter                | Description                                                                                                     |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------- |

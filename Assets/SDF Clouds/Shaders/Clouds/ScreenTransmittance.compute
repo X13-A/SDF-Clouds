@@ -176,9 +176,6 @@ cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightPar
         bool is_inside_clouds_box = isInBox_bounds(currentPos, _CloudsBoundsMin, _CloudsBoundsMax);
         density = 0;
 
-        // Project point on box and check value
-        cloudShadowingResult shadowRes = getCloudShadowing(currentPos, lightParams.lightDir, _CloudsBoundsMin, _CloudsBoundsMax, _TransmittanceMap, sampler_TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage, false, _CustomTime);
-        
         float dstToGeometry = depthDist - dstTravelled;
         float dstToCloudsBoxEdge;
         float3 scaledRayDir = rayDir;
@@ -250,13 +247,30 @@ cloudMarchResult cloudMarch(float3 rayPos, float3 rayDir, s_lightParams lightPar
             stepSize = min(_FogStepSize, maxStepSize);
         }
         
-        // Sample transmittance at current pos
-        float lightTransmittance = shadowRes.shadowing;
         
         // Add fog
         float fogDistTravelled = dstTravelled - fogBoxInfo.dstToBox - _FogDistance;
         float fogDensity = _FogDensity * stepSize * pow(max(fogDistTravelled, 0), 2);
 
+        // Sample transmittance at current pos
+        float lightTransmittance = 1;
+        if (fogDensity + density > 0.005)
+        {
+            // TODO: not sure this improves performance because of branching
+            // Directly sample texture if inside
+            if (is_inside_clouds_box)
+            {
+                float shadowing = sampleTransmittanceMap(currentPos, _TransmittanceMapOrigin, _TransmittanceMapCoverage, _TransmittanceMap, sampler_TransmittanceMap, _CustomTime);
+                lightTransmittance = shadowing;
+            }
+            // Project point on box and check value
+            else
+            {
+                cloudShadowingResult shadowRes = getCloudShadowing(currentPos, lightParams.lightDir, _CloudsBoundsMin, _CloudsBoundsMax, _TransmittanceMap, sampler_TransmittanceMap, _TransmittanceMapOrigin, _TransmittanceMapCoverage, false, _CustomTime);
+                lightTransmittance = shadowRes.shadowing;
+            }
+        }
+        
         // Apply light and density
         res.lightEnergy += (fogDensity + density) * res.transmittance * lightTransmittance;
         res.transmittance *= beer(fogDensity + density);

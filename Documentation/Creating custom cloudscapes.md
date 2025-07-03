@@ -32,7 +32,7 @@ Exemple of a generated texture:
 
 ![Cloudscape generated with 3D Worley noise](Images/WorleyNoise.png)
 
->**Note**: Export the generated noise as a .qb file, convert it to .vox format, then import into MagicaVoxel for manual refinement. 
+>**Note**: You can export the generated noise as a .qb file, convert it to .vox format, then import into MagicaVoxel for manual refinement. 
 
 >This tool converts .qb files to .vox: https://drububu.com/miscellaneous/voxelizer/?out=vox
 ### MagicaVoxel Import
@@ -73,7 +73,7 @@ Convert your generated or imported volume to a usable SDF using the Volume To SD
 | `Chunk Size`         | Integer       | Processing chunk size (helps prevent GPU timeouts for large textures) |
 
 **Wrapping up :**
-- Ensure bilinear filtering is enabled unless voxel-style clouds are intentional.
+- **Important**: Ensure bilinear filtering is enabled unless voxel-style clouds are intentional.
 - You can visualize the SDF in the inspector by selecting the texture asset
 - Reference it in your ``CloudSettings`` preset to render the cloudscape
 
