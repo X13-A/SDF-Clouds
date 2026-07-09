@@ -3,7 +3,7 @@ SDF Clouds is a rendering package for Unity that enables **fast, high-quality vo
 
 Cloud shapes are defined using a **3D Signed Distance Field (SDF)** stored in a voxel grid, giving you full creative control over the structure of your cloudscapes.
 
-![Clouds render](Documentation/Images/Wallpaper.png)
+![Clouds Render](Documentation/Images/Wallpaper%202.png)
 
 ---
 ## Features
